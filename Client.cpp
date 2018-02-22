@@ -68,7 +68,8 @@ int main (int argc, char * argv[])
     else
     {
       close(sockid);
-      perror("Error: %d attempts made to receive! Terminating Connection . . .\n", ATTEMPTS);
+
+      perror("Error: maximum attempts made to receive! Terminating Connection . . .\n");
     }
 
     if(prev_packet_num+1 != p.packet_num)
