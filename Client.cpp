@@ -68,7 +68,6 @@ int main (int argc, char * argv[])
     else
     {
       close(sockid);
-
       perror("Error: maximum attempts made to receive! Terminating Connection . . .\n");
     }
 
@@ -78,7 +77,7 @@ int main (int argc, char * argv[])
       set_timeout(sockid);
       while(true)
       {  
-        if(!(rcv_msg (sockid, &serv_addr, buffer, 5)))
+        if((rcv_msg (sockid, &serv_addr, buffer, 5)))
         {      
           status = send_packet(&prev_packet_num, sockid, serv_addr, "ACK", 'A');
         }

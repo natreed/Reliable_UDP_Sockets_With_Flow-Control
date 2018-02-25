@@ -12,12 +12,36 @@
 #include <unistd.h>
 #include <fstream>
 #include <string>
-
+#include<sys/time.h>
+#include <vector>
+#include <array>
+#include <list>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
 const int ATTEMPTS = 5;
 
+//packet
+typedef struct packet 
+{
+  char msg_type;
+  int packet_num;
+  int msg_size;
+  char data[DATA_SZ];
+} packet;
+
+//++++++++++++++++++++++++++++++++++++++++++=
+//Control list node
+typedef struct cntrl_node
+{
+  packet p;
+  int packet_num;
+} cntrl_node;
+
+//control window
+typedef std::list <cntrl_node> cntrl_window;
+
+//++++++++++++++++++++++++++++++++++++++++++=
 
 //Error msg Function
 int check_retval (int ret_val,const char msg[]) {
@@ -36,13 +60,6 @@ void set_null(char * buffer)
   }
 }
 
-struct packet 
-{
-  char msg_type;
-  int packet_num;
-  int msg_size;
-  char data[DATA_SZ];
-};
 
 void serialize (struct packet* p,char * serialized_packet, int buffer_size) 
 {
@@ -98,7 +115,7 @@ bool rcv_msg (int sockid, sockaddr_in * s_addr, char * buffer, int max_attempt)
     }
     
     //return false if message not received. This will allow caller to resend packet.
-    if (max_attempt < 0) {
+    if (max_attempt <= 0) {
       return false;
     }
     else {
@@ -157,7 +174,7 @@ int send_packet (int * pack_num, int sockid, sockaddr_in s_addr, const char * ms
   serialize(&to_send, bytes_to_send, PACK_SZ);
   
   status = sendto(sockid, bytes_to_send, sizeof(bytes_to_send), 0, (struct sockaddr *) &s_addr, length);
-  check_retval(status, "handshake failed in Sendto()");
+  check_retval(status, "failed in Sendto()");
   return status;
 }
 
