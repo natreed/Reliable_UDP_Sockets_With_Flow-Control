@@ -13,6 +13,14 @@ int main(int argc, char *argv[])
   int sockid, portno, status, size_sent, size_received, pack_num = 0;
   unsigned int client_addr_length = sizeof(struct sockaddr_in);
   portno = atoi(argv[1]);
+  int win_sz = 1;
+  int max_win_sz = 30;
+
+  if (argv[2]) 
+  {
+    max_win_sz = atoi(argv[2]);
+  }
+  
 
   //struct that holds necessary socket parameters
   struct sockaddr_in serv_addr, client_addr;
