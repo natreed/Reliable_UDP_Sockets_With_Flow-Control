@@ -16,30 +16,68 @@
 #include <vector>
 #include <array>
 #include <list>
+#include <bitset>
+#include <algorithm>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
 const int ATTEMPTS = 5;
 
+//prototypes
+void set_null(char *);
+
+
 //packet
-typedef struct packet 
+struct packet 
 {
+  packet() : msg_type('0'), packet_num(0), msg_size(0) 
+  {
+    set_null(data);
+  }
   char msg_type;
   int packet_num;
   int msg_size;
+  //all elements initialized to zero in c++
   char data[DATA_SZ];
-} packet;
+}; 
 
 //++++++++++++++++++++++++++++++++++++++++++=
 //Control list node
-typedef struct cntrl_node
+typedef struct ctrl_node
 {
+  ctrl_node(int index) : win_index(index) {}
   packet p;
-  int packet_num;
-} cntrl_node;
+  int win_index;
+} ctrl_node;
 
-//control window
-typedef std::list <cntrl_node> cntrl_window;
+//control window is a list of ctrl nodes
+typedef std::list <ctrl_node> ctrl_list;
+
+//ctrl window holds list list of ctrl nodes + vector<bool>
+typedef struct ctrl_win 
+{
+  //constructor takes a size argment to initialize vector
+  ctrl_win(int s) : rcvd_vec(s, 0) {}
+  ctrl_list cl;
+  std::vector<bool> rcvd_vec;
+} ctrl_win;
+
+//Run in thread. Signals parent process to initialize 
+//new window.
+bool is_win_full (std::vector<bool> & v) 
+{
+  for (int i = 0; i < v.size(); i ++);
+  return false;
+}
+
+//set up window takes window size and ref to window
+void init_win (int win_sz, ctrl_win & cw)
+{
+  for (int i = 0; i < win_sz; i++)
+  {
+    cw.cl.push_back(ctrl_node(i));
+  }
+}
 
 //++++++++++++++++++++++++++++++++++++++++++=
 
@@ -108,14 +146,15 @@ bool rcv_msg (int sockid, sockaddr_in * s_addr, char * buffer, int max_attempt)
     //check to see if timeout occured and send again if necessary
     while (status < 0 && max_attempt > 0) 
     {
-      printf("%s", "Timeout occurred: resending\n");
+      printf("%s", "Timeout occurred in receive: Trying again\n");
       status = recvfrom (sockid, buffer, PACK_SZ, 0, 
           (struct sockaddr *) s_addr, &s_addr_len);
       max_attempt --;
     }
     
-    //return false if message not received. This will allow caller to resend packet.
+    //Info for caller. Return false if message not received. 
     if (max_attempt <= 0) {
+      printf("%s", "Max attempts reached to receive.");
       return false;
     }
     else {

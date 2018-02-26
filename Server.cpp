@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
   unsigned int client_addr_length = sizeof(struct sockaddr_in);
   portno = atoi(argv[1]);
   int win_sz = 1;
-  int max_win_sz = 30;
+  int max_win_sz = 32;
 
   if (argv[2]) 
   {
@@ -60,10 +60,11 @@ int main(int argc, char *argv[])
     }
   }
 
+  //store message in packet
   struct packet p;
   deserialize(&p, buffer);
 
-  //Message recieved here is file path
+  //Message recieved here is path of file to retrieve
   const char * fp = (const char*)&p.data;
   
   printf("File path received: %s\n", p.data);
@@ -72,6 +73,8 @@ int main(int argc, char *argv[])
   {
     perror("FILE NOT FOUND");
   }
+
+
   //get the size of the file
   infile.seekg (0, infile.end);
   long size = infile.tellg();
