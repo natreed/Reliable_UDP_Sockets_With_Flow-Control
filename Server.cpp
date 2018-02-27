@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
   int sockid, portno, status, size_sent, size_received, pack_num = 0;
   unsigned int client_addr_length = sizeof(struct sockaddr_in);
   portno = atoi(argv[1]);
-  int win_sz = 1;
+  int win_sz = 4;
   int max_win_sz = 32;
 
   if (argv[2]) 
@@ -102,10 +102,15 @@ int main(int argc, char *argv[])
     }
   }
   deserialize(&p, buffer);
-  pack_num = p.packet_num;
+
+  //reset pack num to zero to send data
+  pack_num = 0;
   printf("Sending data...");
-  //send payload
-  //read file till eof
+  
+  //step one: send first win_sz packets and add to ctrl window
+  
+  
+/*  
   while (!infile.eof()) 
   {
     printf(" ... \n");
@@ -133,6 +138,7 @@ int main(int argc, char *argv[])
     }
     pack_num = p.packet_num + 1;
   }
+*/
 
   printf("Sending close packet...\n");
   //Send a close packet to client
