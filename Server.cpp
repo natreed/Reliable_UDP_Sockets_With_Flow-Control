@@ -3,18 +3,13 @@
 
 int main(int argc, char *argv[]) 
 {
-  //Message Codes:
-  //H : handshake
-  //S : size of file (server)
-  //R : Request (client)
-  //A : ACK
-  //D : Data
 
   int sockid, portno, status, size_sent, size_received, pack_num = 0;
   unsigned int client_addr_length = sizeof(struct sockaddr_in);
   portno = atoi(argv[1]);
   int win_sz = 4;
   int max_win_sz = 32;
+  
 
   if (argv[2]) 
   {
@@ -44,28 +39,30 @@ int main(int argc, char *argv[])
 
   printf("Awaiting connection...\n");
   //receive hello/handshake
-  rcv_msg(sockid, &client_addr, buffer, 5);
+  set_null(buffer);
+  rcv_msg(buffer, sockid, &client_addr);
   printf("Connection made, sending ack...\n");
   //send ack back
-  status = send_packet(&pack_num, sockid, client_addr, handshake_msg, 'A');
+ 
+  packet hs_ack(ACK, pack_num, handshake_msg);
+  status = send_packet(hs_ack, sockid, serv_addr);
   set_timeout(sockid);
-  while(true)
-  {
-    //receive filepath from client
-    if(!(rcv_msg (sockid, &client_addr, buffer, 5))){
-      size_sent = send_packet(&pack_num, sockid, client_addr, handshake_msg, 'A'); 
-    }
-    else{
-      break;
-    }
-  }
+  size_sent = 0;
+    
+  //receive filepath from client
 
-  //store message in packet
-  struct packet p;
-  deserialize(&p, buffer);
+  rcv_msg (buffer, sockid, &client_addr);
+  packet p_filepath;
+  deserialize(&p_filepath, buffer);
+  packet p_fp_ack(ACK, pack_num, '\0');
+  size_sent = send_packet(p_fp_ack, sockid, client_addr); 
+
+  //deserialize data stream to  packet
+  deserialize(&p_fp_ack, buffer);
 
   //Message recieved here is path of file to retrieve
-  const char * fp = (const char*)&p.data;
+  const char * fp = (const char*)&p_filepath.data;
+  packet p;
   
   printf("File path received: %s\n", p.data);
   std::ifstream infile (fp, std::ifstream::binary);
@@ -85,22 +82,18 @@ int main(int argc, char *argv[])
   std::string sz = std::to_string(size);
   //convert from string to char *
   const char * str_to_chr = sz.c_str();
-  strcpy(p.data, str_to_chr);
   //printf("%s\n", p.data);
 
   printf("Sending file length: %ld\n", size);
   //sleep(2);
   pack_num++;
-  size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'S');
+  packet p_size(SIZE, pack_num, str_to_chr);
+  size_sent = send_packet(p_size, sockid, client_addr);
   set_timeout(sockid); 
-  while(true){
-    if(!(rcv_msg (sockid, &client_addr, buffer, 5))){
-      size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'S'); 
-    }
-    else{
-      break;
-    }
-  }
+
+  //receive message before beginning transmission
+  rcv_msg (buffer, sockid, &client_addr);
+ 
   deserialize(&p, buffer);
 
   //reset pack num to zero to send data
@@ -108,8 +101,27 @@ int main(int argc, char *argv[])
   printf("Sending data...");
   
   //step one: send first win_sz packets and add to ctrl window
-  
-  
+  ctrl_win cw(4, fp);
+  cw.init(4, sockid, client_addr);
+  cw.shift_win(sockid, client_addr);
+
+  while (true) 
+  {
+    packet p;
+    rcv_msg(buffer, sockid, &serv_addr);
+    deserialize(&p, buffer);
+    cw.log_ack(p.packet_num);
+    if (!cw.shift_win(sockid, client_addr))
+    {
+      close(sockid);
+      break;
+    }
+
+  }
+  return 0;
+}
+
+
 /*  
   while (!infile.eof()) 
   {
@@ -138,16 +150,13 @@ int main(int argc, char *argv[])
     }
     pack_num = p.packet_num + 1;
   }
-*/
 
   printf("Sending close packet...\n");
   //Send a close packet to client
   size_sent = send_packet(&pack_num, sockid, client_addr, "", 'C');
 
-  close(sockid);
 
-  return 0;
-}
+*/
 
 
 

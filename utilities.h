@@ -23,23 +23,33 @@ const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
 const int ATTEMPTS = 5;
 
+//Message Codes:
+char HANDSHAKE = 'H'; //H : handshake
+char SIZE = 'S';      //S : size of file (server)
+char REQUEST = 'R';   //R : Request (client)
+char ACK = 'A';       //A : ACK
+char DATA = 'D';      //D : Data
+
 //prototypes
 void set_null(char *);
-int send_packet (int * pack_num, int sockid, sockaddr_in s_addr, const char * msg, char msg_type); 
+struct packet;
+int send_packet (packet, int sockid, sockaddr_in s_addr); 
+void rcv_msg (char *  buffer, int sockid, sockaddr_in * s_addr);
+void deserialize (struct packet* p, char * buffer); 
 
 //packet
-struct packet 
+typedef struct packet 
 {
   packet() : msg_type('0'), packet_num(0), msg_size(0) 
   {
     set_null(data);
   }
 
-  packet (char type, int pnum, char *data) 
+  packet (char type, int pnum, const char *msg_data) 
   {
     msg_type = type;
     packet_num = pnum;
-    strcpy(data, data);
+    strcpy(data, msg_data);
     msg_size = strlen(data);
   }
   char msg_type;
@@ -47,7 +57,7 @@ struct packet
   int msg_size;
   //all elements initialized to zero in c++
   char data[DATA_SZ];
-}; 
+} packet; 
 
 //++++++++++++++++++++++++++++++++++++++++++=
 //Control list node
@@ -66,17 +76,26 @@ class ctrl_win
 {
   public:
     //constructor takes a size argment to initialize vector
-    ctrl_win(int s) : rcvd_vec(s, 0), pack_num(0) {}
-    void init(int win_sz, std::ifstream, int sockid, struct sockaddr_in client_addr);
+    ctrl_win(int s, const char * f_p) : rcvd_vec(s, 0), pack_num(0)
+  {
+    fs.open(f_p, std::ifstream::binary);
+    if (!fs)
+    {
+      perror("FILE NOT FOUND");
+    }
+  }
+    void init(int win_sz, int sockid, struct sockaddr_in client_addr);
+    int rcv_loop(sockaddr_in * s_addr, int max_attempt, int sockid);
     void append_cnode(ctrl_node);
     void log_ack(int);
     void pop_cnode();
     //function to shift window when ack is recieved
     //for first element
-    int shift_win(std::ifstream fs, int sockid, struct sockaddr_in client_addr);
+    int shift_win(int sockid, struct sockaddr_in client_addr);
   private:
     int pack_num;  
     int w_size;
+    std::ifstream fs;
     ctrl_list cl;
     std::vector<bool> rcvd_vec;
 
@@ -95,7 +114,7 @@ void ctrl_win::pop_cnode()
 
 
 //return value of 0 indicates that all acks have been received
-int ctrl_win::shift_win(std::ifstream fs, int sockid, struct sockaddr_in client_addr)
+int ctrl_win::shift_win(int sockid, struct sockaddr_in client_addr)
 {
   while (!cl.empty() && cl.front().rcvd_ack)
   {
@@ -107,22 +126,23 @@ int ctrl_win::shift_win(std::ifstream fs, int sockid, struct sockaddr_in client_
     if (!fs.eof())  //check for end of file
     {
       //TODO: This needs to be done more than once as window grows
+      packet p('D', pack_num, data);
       try 
       {
-        send_packet(&pack_num, sockid, client_addr, data, 'D');
+        send_packet(p, sockid, client_addr);
       }
       catch (const std::exception& e) {}
       //if not end of file pop from front and append new packet
-      packet p('D', pack_num, data); //initialize data packet
       ctrl_node cn(p);    //initialize control node w/ packet
       pop_cnode();            //pop front of ctrl list
       append_cnode(cn);  //append to end of ctrl list
     }
     else 
     {
+      packet p('C', pack_num, data);
       try
       {
-        send_packet(&pack_num, sockid, client_addr, "", 'C');     
+        send_packet(p, sockid, client_addr);     
       }
       catch (const std::exception& e) {}   
       //end of file has been reached so check last acks till end of list
@@ -137,6 +157,25 @@ int ctrl_win::shift_win(std::ifstream fs, int sockid, struct sockaddr_in client_
 }
 
 
+//function to run in thread from main for receiving messages
+int ctrl_win::rcv_loop( sockaddr_in * s_addr, int max_sz, int sockid)
+{
+  while(true)
+  {
+    char buffer[DATA_SZ];
+    rcv_msg(buffer, sockid, s_addr);
+    packet p;
+    deserialize(&p, buffer);
+    log_ack(p.packet_num);
+    //must be ack
+    if (p.msg_type == 'A')
+    {
+      return 1;
+    }
+  }
+  return -1;
+}
+
 void ctrl_win::log_ack(int pack_num)
 {
   int windex = (pack_num + cl.size()) % cl.size();
@@ -148,75 +187,58 @@ void ctrl_win::log_ack(int pack_num)
   }
   cl_iterator->rcvd_ack = true;
 }
-/*
-//shift continuously checks rcvd vecs first bit
-//and updates window list and rcvd_vec accordingly
-//return value of 0 indicates that all acks have been received
-int ctrl_win::shift_win(std::ifstream fs, int sockid, struct sockaddr_in client_addr) 
-{
-//check if first element
-while(rcvd_vec[0]) 
-{
-if(!infile.eof)
-{
-//
-pop_cnode();
 
 
-//TODO:: Also need to manage window list delete first cnode and 
-//add new cnode to end
-rcvd_vec.erase(rcvd_vec.begin());
-//check that the 
-rcvd_vec.push_back(0);
+void insert_packet (std::list<packet>  & pack_list, packet p) 
+{
+  std::list<packet>::iterator pi = pack_list.begin();;
+  for(pi; pi != pack_list.end(); pi++)
+  {
+    if (p.packet_num < pi->packet_num) {
+      pi++;
+    }
+    else if (p.packet_num == pi->packet_num) {
+      return;
+    }
+    else {
+      pack_list.insert(pi, p);
+    }
+  }
 }
-//if we are at the end of transmission do not add to rcvd_vec
-//but keep erasing
-else
-{
-rcvd_vec.erase(rcvd_vec.begin());
-}
-//check to see if the last ack has been received
-if (rcvd_vec.empty()) 
-{
-return 0;
-}
-return 1;
-}  
-
-}
-
-
-void ctrl_win::log_ack(int pack_num)
-{
-int windex = (pack_num + cl.size()) % cl.size();
-rcvd_vec[windex] = 1;
-}
-
- */
 
 //send first win_size messages and initialize window list
-void ctrl_win::init (int win_sz, std::ifstream fs, int sockid, struct sockaddr_in client_addr) 
+void ctrl_win::init (int win_sz, int sockid, struct sockaddr_in client_addr) 
 {
   w_size = win_sz;
   for (int i = 0; i < win_sz; i++) 
   { 
+    char * data;
+    fs.read(data, DATA_SZ);
     if (!fs.eof()) 
     {
-      char * data;
-      fs.read(data, DATA_SZ);
+      //if not end of file pop from front and append new packet
+      packet p('D', pack_num, data); //initialize data packet
+      ctrl_node cn(p);    //initialize control node w/ packet
+      append_cnode(cn);  //append to end of ctrl list
       try 
       {
-        send_packet(&pack_num, sockid, client_addr, data, 'D');
+        send_packet(p, sockid, client_addr);
+        ctrl_node cn(p);
+        append_cnode(cn);
       }
       catch (const std::exception& e) {} 
     }
     else 
     {
+      packet p('C', pack_num, data); //initialize data packet
       try
       {
-        send_packet(&pack_num, sockid, client_addr, "", 'C');     
+        send_packet(p, sockid, client_addr);
+        ctrl_node cn(p);
+        append_cnode(cn);
       }
-      catch (const std::exception& e) {}     
+      catch (const std::exception& e) {}
+      break;
     }
     pack_num++;
   }
@@ -224,7 +246,9 @@ void ctrl_win::init (int win_sz, std::ifstream fs, int sockid, struct sockaddr_i
 
 
 
-//++++++++++++++++++++++++++++++++++++++++++=
+//++++++++++++++++++++++++++++++++++++++++++= 
+
+
 
 //Error msg Function
 int check_retval (int ret_val,const char msg[]) {
@@ -260,6 +284,7 @@ void serialize (struct packet* p,char * serialized_packet, int buffer_size)
 void deserialize (struct packet* p, char * buffer) 
 {
   int offset = 0;
+  set_null(buffer);
   memcpy(&p->msg_type, buffer, sizeof(char));
   offset += sizeof(char);
   memcpy(&p->packet_num, buffer + offset, sizeof(int));
@@ -282,30 +307,19 @@ void set_timeout (int sockid) {
   }
 }
 
-bool rcv_msg (int sockid, sockaddr_in * s_addr, char * buffer, int max_attempt)
-{   
+void rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
+{ 
+  set_null(buffer);
   unsigned int s_addr_len = sizeof(struct sockaddr_in);
-  int status = recvfrom (sockid, buffer, PACK_SZ, 0, (struct sockaddr *) s_addr, &s_addr_len);
-  check_retval(status, "msg not received"); 
-  //check to see if timeout occured and send again if necessary
-  while (status < 0 && max_attempt > 0) 
+  try
   {
-    printf("%s", "Timeout occurred in receive: Trying again\n");
-    status = recvfrom (sockid, buffer, PACK_SZ, 0, 
-        (struct sockaddr *) s_addr, &s_addr_len);
-    max_attempt --;
+    recvfrom (sockid, buffer, PACK_SZ, 0, (struct sockaddr *) s_addr, &s_addr_len);
   }
-
-  //Info for caller. Return false if message not received. 
-  if (max_attempt <= 0) {
-    printf("%s", "Max attempts reached to receive.");
-    return false;
-  }
-  else {
-    return true;  
+  catch(const std::exception& e)
+  {
+    printf("%s", "failed to receive message");
   }
 }
-
 
 int client_handshake (struct sockaddr_in *serv_addr, int sockid) 
 {
@@ -328,7 +342,7 @@ int client_handshake (struct sockaddr_in *serv_addr, int sockid)
   check_retval(status, "handshake failed in Sendto()");
 
   set_timeout(sockid);	 
-  rcv_msg (sockid, serv_addr, buffer, 5);
+  rcv_msg (buffer, sockid, serv_addr);
 
   struct packet handshake;
   deserialize(&handshake, buffer);
@@ -337,15 +351,10 @@ int client_handshake (struct sockaddr_in *serv_addr, int sockid)
 }
 
 //initialize a packet to send
-int send_packet (int * pack_num, int sockid, sockaddr_in s_addr, const char * msg, char msg_type) 
+int send_packet (packet to_send, int sockid, sockaddr_in s_addr) 
 {
   int status;
-  struct packet to_send;
   unsigned int length = sizeof(struct sockaddr_in);
-  to_send.msg_type = msg_type;
-  to_send.packet_num  = *pack_num;
-  strcpy(to_send.data, msg);
-  to_send.msg_size = strlen(msg);
   char bytes_to_send[PACK_SZ];
   serialize(&to_send, bytes_to_send, PACK_SZ);
 
@@ -355,3 +364,30 @@ int send_packet (int * pack_num, int sockid, sockaddr_in s_addr, const char * ms
 }
 
 #endif
+//Timer Stuff
+/*
+   endifyProgram(double secondsToDelay)
+   {
+   clock_t startTime = clock(); //Start timer
+
+   clock_t testTime;
+   clock_t timePassed;
+   double secondsPassed;
+
+   while(true)
+   {
+   testTime = clock();
+   timePassed = startTime - testTime;
+   secondsPassed = timePassed / (double)CLOCKS_PER_SEC;
+
+   if(secondsPassed >= secondsToDelay)
+   {
+   cout << secondsToDelay << "seconds have passed" << endl;
+   break;
+   }
+
+   }
+
+
+   }
+ */

@@ -13,6 +13,7 @@ int main (int argc, char * argv[])
   
   struct sockaddr_in serv_addr, client_addr;
   char buffer [PACK_SZ];
+  packet p;
   set_null(buffer);
   length = sizeof(struct sockaddr_in);
 
@@ -36,36 +37,39 @@ int main (int argc, char * argv[])
   //args are (packet number, sockid, sockaddr_in, filepath)
   packet_num++;
   printf("Requesting file %s from sever", argv[3]);
-  status = send_packet (&packet_num, sockid, serv_addr, fp_get, 'R');
+  packet p_request_file('R', packet_num, argv[3]);
+  status = send_packet (p_request_file, sockid, serv_addr);
   if (!(status < 0)) 
   {
     printf("%s","Request sent successfully . . .\n");
   }
   
   set_timeout(sockid);
-
-  struct packet p;
-  rcv_msg (sockid, &serv_addr, buffer, 5);
+  rcv_msg (buffer, sockid, &serv_addr);
   printf("Msg size %s received . . .\n", p.data);
   deserialize(&p, buffer);
   file_size = atoi(p.data);
+  packet p_ack(ACK, packet_num, "ack");
   //send file size acknowlegement
   packet_num++;
-  status = send_packet(&packet_num, sockid, serv_addr, "ACK", 'A'); 
+  status = send_packet(p_ack, sockid, serv_addr); 
   
   std::ofstream outfile ("download.txt",std::ofstream::binary);
   int prev_packet_num = packet_num-1;
   
 
 	printf("Beginning data transmission . . .\n");
+
+/*
   while(p.msg_type != 'C')
   {
-    if (rcv_msg(sockid, &serv_addr, buffer, 5))
-		{
-      deserialize(&p, buffer);
-      printf("Received packet %d . . .\n", p.packet_num);
-		}
-    else
+    packet p;
+    try
+    {
+      rcv_msg(buffer, sockid, &serv_addr);
+      deserialize(p, buffer);
+    }
+    catch (const std::exception& e)    
     {
       close(sockid);
       perror("Error: maximum attempts made to receive! Terminating Connection . . .\n");
@@ -73,11 +77,12 @@ int main (int argc, char * argv[])
 
     if(prev_packet_num+1 != p.packet_num)
     {
-      status = send_packet(&prev_packet_num, sockid, serv_addr, "ACK", 'A');
+      
+      status = send_packet(packet p(buffer), sockid, serv_addr);
       set_timeout(sockid);
       while(true)
       {  
-        if((rcv_msg (sockid, &serv_addr, buffer, 5)))
+        if((rcv_msg (buffer, sockid, serv_addr)))
         {      
           status = send_packet(&prev_packet_num, sockid, serv_addr, "ACK", 'A');
         }
@@ -97,6 +102,7 @@ int main (int argc, char * argv[])
     packet_num = p.packet_num;
     prev_packet_num++;
   }
+  */
 
   printf("Data transmission complete . . .\n");
   close(sockid);
