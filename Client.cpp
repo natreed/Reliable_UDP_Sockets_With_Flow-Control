@@ -11,7 +11,7 @@ int main (int argc, char * argv[])
   portno = atoi(argv[2]);
   char * fp_get = argv[3];
   
-  struct sockaddr_in serv_addr, client_addr;
+  struct sockaddr_in serv_addr;
   char buffer [PACK_SZ];
   packet p;
   set_null(buffer);
@@ -19,11 +19,6 @@ int main (int argc, char * argv[])
 
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   check_retval(sockid, "error opening socket");
-  
-  //set up client sockaddr_in
-  client_addr.sin_family = PF_INET;
-  client_addr.sin_port = ntohs(portno);
-  client_addr.sin_addr.s_addr = ntohl(INADDR_ANY);
   
   //set up server sockaddr_in
   serv_addr.sin_family = PF_INET;

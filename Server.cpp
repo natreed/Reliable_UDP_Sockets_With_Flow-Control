@@ -1,5 +1,6 @@
-//Nathan and Randy
 #include "utilities.h"
+#include "ctrl_win.h"
+#include "Server.h"
 
 int main(int argc, char *argv[]) 
 {
@@ -9,19 +10,17 @@ int main(int argc, char *argv[])
   portno = atoi(argv[1]);
   int win_sz = 4;
   int max_win_sz = 32;
-  
+  char buffer[DATA_SZ];
+
 
   if (argv[2]) 
   {
     max_win_sz = atoi(argv[2]);
   }
-  
+
 
   //struct that holds necessary socket parameters
-  struct sockaddr_in serv_addr, client_addr;
-  char buffer [PACK_SZ];
-  set_null(buffer);
-  const char * handshake_msg = "ACK";
+  struct sockaddr_in client_addr, serv_addr;
   //Assign values to serv_addr socket fields
   serv_addr.sin_family  = PF_INET;          //address family
   serv_addr.sin_port = htons(portno);       //port in network byte order  
@@ -30,27 +29,21 @@ int main(int argc, char *argv[])
   //Sockid is handle for socket. (family, type, protocol)
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   check_retval(sockid, "could not open socket");
-  check_retval (sizeof(&serv_addr), "sockaddr_in not set up");
+  check_retval (sizeof(&client_addr), "sockaddr_in not set up");
 
   //Bind socket
   status = bind(sockid, (struct sockaddr*) &serv_addr, 
       sizeof(serv_addr));
   check_retval(status, "status, binding socket");
 
-  printf("Awaiting connection...\n");
-  //receive hello/handshake
-  set_null(buffer);
-  rcv_msg(buffer, sockid, &client_addr);
-  printf("Connection made, sending ack...\n");
-  //send ack back
- 
-  packet hs_ack(ACK, pack_num, handshake_msg);
-  status = send_packet(hs_ack, sockid, serv_addr);
+  //wait for handshake msg
+  //TODO: what to do here so that multiple connections can
+  //be initiated
+  hs_server(serv_addr, sockid);
   set_timeout(sockid);
   size_sent = 0;
-    
-  //receive filepath from client
 
+  //receive filepath from client
   rcv_msg (buffer, sockid, &client_addr);
   packet p_filepath;
   deserialize(&p_filepath, buffer);
@@ -63,7 +56,7 @@ int main(int argc, char *argv[])
   //Message recieved here is path of file to retrieve
   const char * fp = (const char*)&p_filepath.data;
   packet p;
-  
+
   printf("File path received: %s\n", p.data);
   std::ifstream infile (fp, std::ifstream::binary);
   if (!infile) 
@@ -93,13 +86,13 @@ int main(int argc, char *argv[])
 
   //receive message before beginning transmission
   rcv_msg (buffer, sockid, &client_addr);
- 
+
   deserialize(&p, buffer);
 
   //reset pack num to zero to send data
   pack_num = 0;
   printf("Sending data...");
-  
+
   //step one: send first win_sz packets and add to ctrl window
   ctrl_win cw(4, fp);
   cw.init(4, sockid, client_addr);
@@ -123,40 +116,35 @@ int main(int argc, char *argv[])
 
 
 /*  
-  while (!infile.eof()) 
-  {
+    while (!infile.eof()) 
+    {
     printf(" ... \n");
     set_null(p.data); 
     infile.read(p.data, DATA_SZ);
     while(true)
     {
-      size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'D'); 
-      set_timeout(sockid); 
-      while(true)
-      {
-        if(!(rcv_msg (sockid, &client_addr, buffer, 5))){
-          size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'D'); 
-		}
-        else{
-          break;
-        }
-      }
-    
-      deserialize(&p, buffer);
-      if (p.msg_type == 'A' && pack_num == p.packet_num) 
-      {
-        break;
-      }
+    size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'D'); 
+    set_timeout(sockid); 
+    while(true)
+    {
+    if(!(rcv_msg (sockid, &client_addr, buffer, 5))){
+    size_sent = send_packet(&pack_num, sockid, client_addr, p.data, 'D'); 
+    }
+    else{
+    break;
+    }
+    }
+
+    deserialize(&p, buffer);
+    if (p.msg_type == 'A' && pack_num == p.packet_num) 
+    {
+    break;
+    }
     }
     pack_num = p.packet_num + 1;
-  }
-
-  printf("Sending close packet...\n");
-  //Send a close packet to client
-  size_sent = send_packet(&pack_num, sockid, client_addr, "", 'C');
-
-
-*/
-
-
+    }
+    printf("Sending close packet...\n");
+//Send a close packet to client
+size_sent = send_packet(&pack_num, sockid, client_addr, "", 'C');
+ */
 
