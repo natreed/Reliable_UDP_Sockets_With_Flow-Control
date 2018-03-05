@@ -4,17 +4,19 @@
 int main (int argc, char * argv[]) 
 {
   struct hostent  server_ip;
-  int sockid, portno, status, packet_num = 0, file_size;
+  int sockid, rcv_sockid, portno, status, packet_num = 0, file_size;
   unsigned int length;
   server_ip = *gethostbyname(argv[1]);
   //char filepath[100] = argv[2];
   portno = atoi(argv[2]);
   char * fp_get = argv[3];
   
-  struct sockaddr_in serv_addr;
+  struct sockaddr_in serv_addr, rcv_addr;
   char buffer [PACK_SZ];
   packet p;
   set_null(buffer);
+  std::mutex list_lock;
+  int max_packet;
   length = sizeof(struct sockaddr_in);
 
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -25,9 +27,43 @@ int main (int argc, char * argv[])
   serv_addr.sin_port = ntohs(portno);
   bcopy((char*) server_ip.h_addr, (char*) &serv_addr.sin_addr, server_ip.h_length);
 
+  //New socket for receiver thread in Client
+  rcv_sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  check_retval(rcv_sockid, "error opening socket");
+  
+  //set up server sockaddr_in
+  rcv_addr.sin_family = PF_INET;
+  rcv_addr.sin_port = ntohs(portno + 1);
+  bcopy((char*) server_ip.h_addr, (char*) &rcv_addr.sin_addr, server_ip.h_length);
+
+
   printf("%s","Initiate handshake with server. . .\n");
   status = client_handshake(&serv_addr, sockid);
   printf("%s", "Acknowledgement received from server . . .\n");
+ 
+  std::list<packet> packetlist;
+  int previous_packet_num = 0;
+  void send_ack(std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr) 
+  {
+      while (true) 
+      {
+        if (packet_list.empty())
+        {
+          continue;
+        }
+        if (packetlist.head().packet_num == previous_packet_num +1 || packetlist.head().packet_num ==0)
+        {
+          packet p packetlist.pop();
+          p.msg_type = 'A';
+          send_packet();
+          previous_packet_num = p.packet_num;
+        }
+      }
+  }
+
+
+  std::thread snd_thread(send_ack, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
+  
   
   //args are (packet number, sockid, sockaddr_in, filepath)
   packet_num++;

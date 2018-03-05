@@ -11,13 +11,15 @@ int main(int argc, char *argv[])
   int win_sz = 4;
   int max_win_sz = 32;
   char buffer[DATA_SZ];
+  int last_packet_num = 0;
+  std::mutex list_lock;
 
+  
 
   if (argv[2]) 
   {
     max_win_sz = atoi(argv[2]);
   }
-
 
   //struct that holds necessary socket parameters
   struct sockaddr_in client_addr, serv_addr;
@@ -29,12 +31,34 @@ int main(int argc, char *argv[])
   //Sockid is handle for socket. (family, type, protocol)
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   check_retval(sockid, "could not open socket");
-  check_retval (sizeof(&client_addr), "sockaddr_in not set up");
 
   //Bind socket
   status = bind(sockid, (struct sockaddr*) &serv_addr, 
       sizeof(serv_addr));
   check_retval(status, "status, binding socket");
+
+  
+  //create new socket for receiver thread
+  struct sockaddr_in rcv_addr;
+  //Assign values to serv_addr socket fields
+  rcv_addr.sin_family  = PF_INET;          //address family
+  rcv_addr.sin_port = htons(portno +1);       //port in network byte order  
+  rcv_addr.sin_addr.s_addr = htonl(INADDR_ANY);  //internet address
+
+  //Sockid is handle for socket. (family, type, protocol)
+  int rcv_sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  check_retval(rcv_sockid, "could not open socket");
+
+  //Bind socket
+  status = bind(rcv_sockid, (struct sockaddr*) &rcv_addr, 
+      sizeof(rcv_addr));
+  check_retval(status, "status, binding socket");
+
+
+
+
+
+
 
   //wait for handshake msg
   //TODO: what to do here so that multiple connections can
@@ -69,7 +93,7 @@ int main(int argc, char *argv[])
   infile.seekg (0, infile.end);
   long size = infile.tellg();
   infile.seekg(0);
-
+  last_packet_num =ceil(size  / DATA_SZ);
   //configure size as char *
   //use string to convert from integer
   std::string sz = std::to_string(size);
@@ -95,22 +119,22 @@ int main(int argc, char *argv[])
 
   //step one: send first win_sz packets and add to ctrl window
   ctrl_win cw(4, fp);
-  cw.init(4, sockid, client_addr);
-  cw.shift_win(sockid, client_addr);
+
+  //start receiving thread
+  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
+  cw.init(&list_lock, 4, sockid, client_addr);
+  cw.shift_win(&list_lock, sockid, client_addr);
 
   while (true) 
   {
-    packet p;
-    rcv_msg(buffer, sockid, &serv_addr);
-    deserialize(&p, buffer);
-    cw.log_ack(p.packet_num);
-    if (!cw.shift_win(sockid, client_addr))
+    if (!cw.shift_win(&list_lock, sockid, client_addr))
     {
       close(sockid);
       break;
     }
 
   }
+  rcv_thread.join();
   return 0;
 }
 

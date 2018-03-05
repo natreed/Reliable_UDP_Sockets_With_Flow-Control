@@ -19,6 +19,9 @@
 #include <bitset>
 #include <algorithm>
 #include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <math.h>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
@@ -48,7 +51,7 @@ int  set_timeout_();
 //packet
 typedef struct packet 
 {
-  packet() : msg_type('0'), packet_num(0), msg_size(0) 
+  packet() : msg_type('0'), packet_num(0), msg_size(0), status(UNUSED) 
   {
     set_null(data);
   }
@@ -74,14 +77,15 @@ typedef struct packet
 class ctrl_node
 {
   public:
-  ctrl_node(packet pack, int sock_id, sockaddr_in s) : rcvd_ack(false), p(pack), attempt_ct(0), running(true)
+  ctrl_node(packet pack, int sock_id, sockaddr_in s) : p(pack), attempt_ct(0), running(true)
   { 
     sockid = sock_id;
     client_addr = s;
   }
-
-    bool rcvd_ack;
+  int get_status() {return status;}
+  void set_status(int s) {status = s;} 
   private:
+    
     bool running;
     int sockid;
     sockaddr_in client_addr;

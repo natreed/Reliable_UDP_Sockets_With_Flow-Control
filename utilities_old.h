@@ -18,7 +18,8 @@
 #include <list>
 #include <bitset>
 #include <algorithm>
-#include <pthread.h>
+#include <thread>
+#include <mutex>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
