@@ -22,7 +22,8 @@ class ctrl_win
     void pop_cnode();
     //function to shift window when ack is recieved
     //for first element
-    int shift_win(std::mutex * m, int sockid, struct sockaddr_in client_addr);
+    int win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr);
+    void shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, char type, char * data);
   private:
     int pack_num;  
     int w_size;
@@ -43,21 +44,41 @@ void ctrl_win::pop_cnode()
 
 //TODO: This function could run on a thread
 //return value of 0 indicates that all acks have been receive/
-int ctrl_win::shift_win(std::mutex * m, int sockid, struct sockaddr_in client_addr)
+int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr)
 {
-  while (!cl.empty() && cl.front().get_status() == ACKED)
+  while (!cl.empty())
   {
+    if (cl.front().get_status() != ACKED) 
+    {
+      continue;
+    }
     //to move window pop first node. create and add last nodae.
-    pack_num += 1;  //increment packet number
-    char * data; 
+    char  data[DATA_SZ]; 
     fs.read(data, DATA_SZ);  //get data to send
 
     if (!fs.eof())  //check for end of file
     {
-      //TODO: This needs to be done more than once as window grows
-      packet p('D', pack_num, data);
+      shift_win(m, sockid, client_addr, DATA, data);
+    }
+    else 
+    {
+      shift_win(m, sockid, client_addr, CLOSE, data);
+    }
+  }
+  if (cl.empty()) {
+    return 0;
+  }   
+  return 1;
+}
+
+void ctrl_win::shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, 
+char type, char * data)
+{
+      pack_num += 1;  //increment packet number
+      packet p(type, pack_num, data);
       try 
       {
+        //TODO: This needs to be done more than once as window grows
         send_packet(p, sockid, client_addr);
       }
       catch (const std::exception& e) {}
@@ -69,46 +90,6 @@ int ctrl_win::shift_win(std::mutex * m, int sockid, struct sockaddr_in client_ad
       append_cnode(cn);  //append to end of ctrl list
       m->unlock();
       //start timer thread
-    }
-    else 
-    {
-      packet p('C', pack_num, data);
-      try
-      {
-        send_packet(p, sockid, client_addr);     
-      }
-      catch (const std::exception& e) {}   
-      //end of file has been reached so check last acks till end of list
-      ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
-      cn.set_status(SENT);
-      m->lock();
-      pop_cnode();            //pop front of ctrl list
-      append_cnode(cn);  //append to end of ctrl list
-      m->unlock();
-    }
-  }
-  if (cl.empty()) {
-    return 0;
-  }   
-  return 1;
-}
-
-//function to run in thread from main for receiving messages
-void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
-{
-  
-  for (int i = 0; i < last_packet_num; i++)
-  {
-    char buffer[DATA_SZ];
-    rcv_msg(buffer, sockid, &s_addr);
-    packet p;
-    deserialize(&p, buffer);
-    //lock 
-    m.lock();
-    cw.log_ack(p.packet_num);
-    m.unlock();
-    
-  }
 }
 
 
@@ -133,6 +114,7 @@ void ctrl_win::init (std::mutex * m, int win_sz, int sockid, struct sockaddr_in 
   { 
     char data[DATA_SZ];
     fs.read(data, DATA_SZ);
+    printf("DATA : %s\n", data);
     if (!fs.eof()) 
     {
       //if not end of file pop from front and append new packet

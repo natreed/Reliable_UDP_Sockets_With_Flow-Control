@@ -76,52 +76,9 @@ int main (int argc, char * argv[])
   
 
 	printf("Beginning data transmission . . .\n");
-
-  std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), rcv_sockid, rcv_addr, std::ref(max_packet), last_packet_num, std::ref(outfile), std::ref(all_done));
-  send_acks(list_lock, ctrl_list, sockid, serv_addr, max_packet, window_size, all_done);
-/*
-  while(p.msg_type != 'C')
-  {
-    packet p;
-    try
-    {
-      rcv_msg(buffer, sockid, &serv_addr);
-      deserialize(p, buffer);
-    }
-    catch (const std::exception& e)    
-    {
-      close(sockid);
-      perror("Error: maximum attempts made to receive! Terminating Connection . . .\n");
-    }
-
-    if(prev_packet_num+1 != p.packet_num)
-    {
-      
-      status = send_packet(packet p(buffer), sockid, serv_addr);
-      set_timeout(sockid);
-      while(true)
-      {  
-        if((rcv_msg (buffer, sockid, serv_addr)))
-        {      
-          status = send_packet(&prev_packet_num, sockid, serv_addr, "ACK", 'A');
-        }
-        else
-        {
-           break;
-        }
-      }
-    }
-    else
-    {
-      outfile.write(p.data, p.msg_size);
-      status = send_packet(&p.packet_num, sockid, serv_addr, "ACK", 'A');
-      printf("ACK packet %d  . . .\n", p.packet_num);
-    } 
-
-    packet_num = p.packet_num;
-    prev_packet_num++;
-  }
-  */
+  std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr, std::ref(max_packet), window_size, std::ref(all_done));
+  write_data(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, last_packet_num, outfile, all_done);
+  //std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), rcv_sockid, rcv_addr, std::ref(max_packet), last_packet_num, std::ref(outfile), std::ref(all_done));
 
   printf("Data transmission complete . . .\n");
   close(sockid);

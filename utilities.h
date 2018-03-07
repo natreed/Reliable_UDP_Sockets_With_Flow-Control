@@ -35,6 +35,7 @@ char SIZE = 'S';      //S : size of file (server)
 char REQUEST = 'R';   //R : Request (client)
 char ACK = 'A';       //A : ACK
 char DATA = 'D';      //D : Data
+char CLOSE = 'C';      //D : Data
 
 enum packet_status :  short  {UNUSED, SENT, ACKED};
 

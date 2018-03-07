@@ -1,4 +1,5 @@
 #include "utilities.h"
+#include "ctrl_win.h"
 
 //handshake function for server
 int hs_server (struct sockaddr_in  client_addr, int sockid)
@@ -35,4 +36,24 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
     return 0;
   }
 }
+
+//function to run in thread from main for receiving messages
+void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
+{
+  int i = 0;
+  for (int i = 0; i < last_packet_num; i++)
+  {
+    if 
+    char buffer[DATA_SZ];
+    rcv_msg(buffer, sockid, &s_addr);
+    packet p;
+    deserialize(&p, buffer);
+    //lock 
+    m.lock();
+    cw.log_ack(p.packet_num);
+    m.unlock();
+    
+  }
+}
+
 
