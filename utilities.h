@@ -191,7 +191,6 @@ void rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
 int send_packet (packet to_send, int sockid, sockaddr_in s_addr) 
 {
   int status;
-  set_null(to_send.data);
   unsigned int length = sizeof(struct sockaddr_in);
   char bytes_to_send[PACK_SZ];
   serialize(&to_send, bytes_to_send, PACK_SZ);
