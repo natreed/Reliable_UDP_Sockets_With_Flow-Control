@@ -42,7 +42,7 @@ enum packet_status :  short  {UNUSED, SENT, ACKED};
 void set_null(char *);
 struct packet;
 int send_packet (packet, int sockid, sockaddr_in s_addr); 
-void rcv_msg (char *  buffer, int sockid, sockaddr_in * s_addr);
+void rcv_msg (char *   buffer, int sockid, sockaddr_in * s_addr);
 void deserialize (struct packet* p, char * buffer);
 class ctrl_node;
 int st_wrapper(ctrl_node cn) ;
@@ -149,7 +149,6 @@ void serialize (struct packet* p,char * serialized_packet, int buffer_size)
 void deserialize (struct packet* p, char * buffer) 
 {
   int offset = 0;
-  set_null(buffer);
   memcpy(&p->msg_type, buffer, sizeof(char));
   offset += sizeof(char);
   memcpy(&p->packet_num, buffer + offset, sizeof(int));
@@ -192,6 +191,7 @@ void rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
 int send_packet (packet to_send, int sockid, sockaddr_in s_addr) 
 {
   int status;
+  set_null(to_send.data);
   unsigned int length = sizeof(struct sockaddr_in);
   char bytes_to_send[PACK_SZ];
   serialize(&to_send, bytes_to_send, PACK_SZ);

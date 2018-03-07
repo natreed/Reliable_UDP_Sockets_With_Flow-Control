@@ -54,12 +54,6 @@ int main(int argc, char *argv[])
       sizeof(rcv_addr));
   check_retval(status, "status, binding socket");
 
-
-
-
-
-
-
   //wait for handshake msg
   //TODO: what to do here so that multiple connections can
   //be initiated
@@ -71,7 +65,7 @@ int main(int argc, char *argv[])
   rcv_msg (buffer, sockid, &client_addr);
   packet p_filepath;
   deserialize(&p_filepath, buffer);
-  packet p_fp_ack(ACK, pack_num, '\0');
+  packet p_fp_ack(ACK, pack_num, "\0");
   size_sent = send_packet(p_fp_ack, sockid, client_addr); 
 
   //deserialize data stream to  packet
@@ -79,9 +73,8 @@ int main(int argc, char *argv[])
 
   //Message recieved here is path of file to retrieve
   const char * fp = (const char*)&p_filepath.data;
-  packet p;
 
-  printf("File path received: %s\n", p.data);
+  printf("File path received: %s\n", fp);
   std::ifstream infile (fp, std::ifstream::binary);
   if (!infile) 
   {
@@ -110,7 +103,7 @@ int main(int argc, char *argv[])
 
   //receive message before beginning transmission
   rcv_msg (buffer, sockid, &client_addr);
-
+  packet p;
   deserialize(&p, buffer);
 
   //reset pack num to zero to send data

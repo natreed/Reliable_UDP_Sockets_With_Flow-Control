@@ -16,7 +16,9 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
   {
 
   }
+  printf("hs msg received");
   deserialize(&hs_packet, buffer);
+  printf("hs_packet  deserialized");
 
   //check to see if incoming message is a handshake
   //if not ignore
