@@ -4,5 +4,6 @@ Main: Client.cpp Server.cpp utilities.h
 	g++ -std=c++11 -pthread utilities.h
 	g++ -std=c++11 -pthread ctrl_win.h
 	g++ -std=c++11 -pthread Server.h
+	g++ -std=c++11 -pthread Client.h
 
 

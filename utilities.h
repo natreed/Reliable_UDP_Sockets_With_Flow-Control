@@ -27,6 +27,7 @@ const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
 const int MAX_ATTEMPTS = 5;
 const int TIMEOUT = 2;
+const int MAX_WIN_SZ = 30;
 
 //Message Codes:
 char HANDSHAKE = 'H'; //H : handshake
@@ -185,34 +186,6 @@ void rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
   }
 }
 
-int client_handshake (struct sockaddr_in *serv_addr, int sockid) 
-{
-  int status = 0;
-  char buffer[PACK_SZ];
-  unsigned int length = sizeof(struct sockaddr_in);
-  struct packet p;
-
-  p.msg_type = 'H';
-  p.packet_num = 0;
-  const char myData[6] = "Hello";
-  strcpy(p.data, myData);
-  p.msg_size = sizeof(p.data);
-
-  char data_packet[sizeof(char) + sizeof(int)*2 + sizeof(buffer)];
-  serialize(&p, data_packet, sizeof(buffer));
-
-  //send handshake  packet
-  status = sendto(sockid, data_packet, sizeof(data_packet), 0, (struct sockaddr *) serv_addr, length);
-  check_retval(status, "handshake failed in Sendto()");
-
-  set_timeout(sockid);	 
-  rcv_msg (buffer, sockid, serv_addr);
-
-  struct packet handshake;
-  deserialize(&handshake, buffer);
-  return status;
-
-}
 
 
 //initialize a packet to send

@@ -1,12 +1,12 @@
 //Nathan and Randy
-#include "utilities.h"
-
+#include "Client.h"
 int main (int argc, char * argv[]) 
 {
   struct hostent  server_ip;
   int sockid, rcv_sockid, portno, status, packet_num = 0, file_size;
   unsigned int length;
   server_ip = *gethostbyname(argv[1]);
+  int window_size = 5;
   //char filepath[100] = argv[2];
   portno = atoi(argv[2]);
   char * fp_get = argv[3];
@@ -15,8 +15,11 @@ int main (int argc, char * argv[])
   char buffer [PACK_SZ];
   packet p;
   set_null(buffer);
+  std::list<packet> ctrl_list;
   std::mutex list_lock;
-  int max_packet;
+  bool all_done = false;
+
+  int max_packet = window_size - 1;
   length = sizeof(struct sockaddr_in);
 
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -43,26 +46,8 @@ int main (int argc, char * argv[])
  
   std::list<packet> packetlist;
   int previous_packet_num = 0;
-  void send_ack(std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr) 
-  {
-      while (true) 
-      {
-        if (packet_list.empty())
-        {
-          continue;
-        }
-        if (packetlist.head().packet_num == previous_packet_num +1 || packetlist.head().packet_num ==0)
-        {
-          packet p packetlist.pop();
-          p.msg_type = 'A';
-          send_packet();
-          previous_packet_num = p.packet_num;
-        }
-      }
-  }
 
 
-  std::thread snd_thread(send_ack, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
   
   
   //args are (packet number, sockid, sockaddr_in, filepath)
@@ -80,6 +65,7 @@ int main (int argc, char * argv[])
   printf("Msg size %s received . . .\n", p.data);
   deserialize(&p, buffer);
   file_size = atoi(p.data);
+  int last_packet_num = ceil(file_size / DATA_SZ);
   packet p_ack(ACK, packet_num, "ack");
   //send file size acknowlegement
   packet_num++;
@@ -91,6 +77,8 @@ int main (int argc, char * argv[])
 
 	printf("Beginning data transmission . . .\n");
 
+  std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), rcv_sockid, rcv_addr, std::ref(max_packet), last_packet_num, std::ref(outfile), std::ref(all_done));
+  send_acks(list_lock, ctrl_list, sockid, serv_addr, max_packet, window_size, all_done);
 /*
   while(p.msg_type != 'C')
   {

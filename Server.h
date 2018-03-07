@@ -8,7 +8,14 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
   //receive hello/handshake
   const char * handshake_msg = "ACK";
   packet hs_packet;
-  rcv_msg(buffer, sockid, &client_addr);
+  try
+  {
+    rcv_msg(buffer, sockid, &client_addr);
+  }
+  catch(const std::exception & e)
+  {
+
+  }
   deserialize(&hs_packet, buffer);
 
   //check to see if incoming message is a handshake

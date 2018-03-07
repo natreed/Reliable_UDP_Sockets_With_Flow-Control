@@ -45,7 +45,7 @@ void ctrl_win::pop_cnode()
 //return value of 0 indicates that all acks have been receive/
 int ctrl_win::shift_win(std::mutex * m, int sockid, struct sockaddr_in client_addr)
 {
-  while (!cl.empty() && cl.front().get_status() == UNUSED)
+  while (!cl.empty() && cl.front().get_status() == ACKED)
   {
     //to move window pop first node. create and add last nodae.
     pack_num += 1;  //increment packet number
