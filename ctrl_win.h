@@ -131,7 +131,7 @@ void ctrl_win::init (std::mutex * m, int win_sz, int sockid, struct sockaddr_in 
   w_size = win_sz;
   for (int i = 0; i < win_sz; i++) 
   { 
-    char * data;
+    char data[DATA_SZ];
     fs.read(data, DATA_SZ);
     if (!fs.eof()) 
     {
