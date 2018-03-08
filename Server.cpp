@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
   //wait for handshake msg
   //TODO: what to do here so that multiple connections can
   //be initiated
-  hs_server(serv_addr, sockid);
+  hs_server(client_addr, sockid);
   set_timeout(sockid);
   size_sent = 0;
 
