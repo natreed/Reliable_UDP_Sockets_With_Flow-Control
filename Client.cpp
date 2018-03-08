@@ -61,9 +61,9 @@ int main (int argc, char * argv[])
   
   set_timeout(sockid);
   rcv_msg (buffer, sockid, &serv_addr);
-  printf("Msg size %s received . . .\n", p.data);
   deserialize(&p, buffer);
   file_size = atoi(p.data);
+  printf("Msg size %s received . . .\n", p.data);
   int last_packet_num = ceil(file_size / DATA_SZ);
   packet p_ack(ACK, packet_num, "ack");
   //send file size acknowlegement

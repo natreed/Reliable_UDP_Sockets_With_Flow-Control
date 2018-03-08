@@ -64,11 +64,11 @@ int main(int argc, char *argv[])
   rcv_msg (buffer, sockid, &client_addr);
   packet p_filepath;
   deserialize(&p_filepath, buffer);
-  packet p_fp_ack(ACK, pack_num, "\0");
-  size_sent = send_packet(p_fp_ack, sockid, client_addr); 
+  //packet p_fp_ack(ACK, pack_num, "\0");
+  //size_sent = send_packet(p_fp_ack, sockid, client_addr); 
 
   //deserialize data stream to  packet
-  deserialize(&p_fp_ack, buffer);
+  //deserialize(&p_fp_ack, buffer);
 
   //Message recieved here is path of file to retrieve
   const char * fp = (const char*)&p_filepath.data;
