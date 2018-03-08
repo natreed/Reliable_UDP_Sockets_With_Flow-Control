@@ -40,7 +40,7 @@ int main (int argc, char * argv[])
 
 
   printf("%s","Initiate handshake with server. . .\n");
-  status = client_handshake(&serv_addr, sockid);
+  status = client_handshake(serv_addr, sockid);
   printf("%s", "Acknowledgement received from server . . .\n");
  
   std::list<packet> packetlist;

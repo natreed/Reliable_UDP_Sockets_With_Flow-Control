@@ -60,7 +60,7 @@ void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, socka
    }
 }
 
-int client_handshake (struct sockaddr_in *serv_addr, int sockid) 
+int client_handshake (struct sockaddr_in serv_addr, int sockid) 
 {
   int status = 0;
   char buffer[PACK_SZ];
@@ -77,11 +77,11 @@ int client_handshake (struct sockaddr_in *serv_addr, int sockid)
   serialize(&p, data_packet, sizeof(buffer));
 
   //send handshake  packet
-  status = sendto(sockid, data_packet, sizeof(data_packet), 0, (struct sockaddr *) serv_addr, length);
+  status = sendto(sockid, data_packet, sizeof(data_packet), 0, (struct sockaddr *) &serv_addr, length);
   check_retval(status, "handshake failed in Sendto()");
 
   set_timeout(sockid);	 
-  rcv_msg (buffer, sockid, serv_addr);
+  rcv_msg (buffer, sockid, &serv_addr);
 
   struct packet handshake;
   deserialize(&handshake, buffer);
