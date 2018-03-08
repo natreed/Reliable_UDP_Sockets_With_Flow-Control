@@ -1,6 +1,15 @@
 #include "utilities.h"
 #include "ctrl_win.h"
 
+
+
+
+
+
+
+
+
+
 //handshake function for server
 int hs_server (struct sockaddr_in  client_addr, int sockid)
 {
@@ -43,7 +52,7 @@ void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, in
   int i = 0;
   for (int i = 0; i < last_packet_num; i++)
   {
-    if 
+     
     char buffer[DATA_SZ];
     rcv_msg(buffer, sockid, &s_addr);
     packet p;

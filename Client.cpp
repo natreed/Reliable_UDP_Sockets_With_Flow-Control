@@ -2,10 +2,9 @@
 #include "Client.h"
 int main (int argc, char * argv[]) 
 {
-  struct hostent  server_ip;
+  struct hostent  server_ip = *gethostbyname(argv[1]);
   int sockid, rcv_sockid, portno, status, packet_num = 0, file_size;
   unsigned int length;
-  server_ip = *gethostbyname(argv[1]);
   int window_size = 5;
   //char filepath[100] = argv[2];
   portno = atoi(argv[2]);
@@ -76,7 +75,7 @@ int main (int argc, char * argv[])
   
 
 	printf("Beginning data transmission . . .\n");
-  std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr, std::ref(max_packet), window_size, std::ref(all_done));
+  std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr,  std::ref(max_packet), window_size, std::ref(all_done));
   write_data(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, last_packet_num, outfile, all_done);
   //std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), rcv_sockid, rcv_addr, std::ref(max_packet), last_packet_num, std::ref(outfile), std::ref(all_done));
 

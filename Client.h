@@ -38,6 +38,7 @@ void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid,
 void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr, int & max_packet_num, int window_size, bool & all_done) 
 {
    char buffer[PACK_SZ];
+   set_null(buffer);
    while(!all_done)
    {
      rcv_msg(buffer, sockid, &s_addr);
