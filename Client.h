@@ -17,19 +17,19 @@ void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid,
     {
       if (packet_list.front().msg_type == 'D')
       {
-      packet p = packet_list.front(); 
-      m.lock();
-      packet_list.pop_front();
-      m.unlock();
-      outfile.write(p.data, p.msg_size);
-      
-      previous_packet_num = p.packet_num;
-      max_packet_num++;
-      if (p.packet_num == last_packet_num)
-      {
-        all_done = true;
-        return;
-      }
+        packet p = packet_list.front(); 
+        m.lock();
+        packet_list.pop_front();
+        m.unlock();
+        outfile.write(p.data, p.msg_size);
+
+        previous_packet_num = p.packet_num;
+        max_packet_num++;
+        if (p.packet_num == last_packet_num)
+        {
+          all_done = true;
+          return;
+        }
       }
     }
   }
@@ -37,27 +37,27 @@ void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid,
 
 void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr, int & max_packet_num, int window_size, bool & all_done) 
 {
-   char buffer[PACK_SZ];
-   set_null(buffer);
-   while(!all_done)
-   {
-     rcv_msg(buffer, sockid, &s_addr);
-     if (packetlist.size() <= window_size)
-     {
-        packet p;
-        deserialize(&p, buffer);
-        if (p.packet_num > max_packet_num)
-        {
-          continue;
-        }
-        p.status = ACKED;
-        m.lock();
-        insert_packet(packetlist, p);
-        m.unlock();
-        packet p_ack('A', p.packet_num, "\0");
-        send_packet(p_ack, sockid, s_addr);
-     }
-   }
+  char buffer[PACK_SZ];
+  set_null(buffer);
+  while(!all_done)
+  {
+    rcv_msg(buffer, sockid, &s_addr);
+    if (packetlist.size() <= window_size)
+    {
+      packet p;
+      deserialize(&p, buffer);
+      if (p.packet_num > max_packet_num)
+      {
+        continue;
+      }
+      p.status = ACKED;
+      m.lock();
+      insert_packet(packetlist, p);
+      m.unlock();
+      packet p_ack(ACK, p.packet_num, "\0");
+      send_packet(p_ack, sockid, s_addr);
+    }
+  }
 }
 
 int client_handshake (struct sockaddr_in serv_addr, int sockid) 

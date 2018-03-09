@@ -1,15 +1,6 @@
 #include "utilities.h"
 #include "ctrl_win.h"
 
-
-
-
-
-
-
-
-
-
 //handshake function for server
 int hs_server (struct sockaddr_in  client_addr, int sockid)
 {

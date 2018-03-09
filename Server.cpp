@@ -91,10 +91,8 @@ int main(int argc, char *argv[])
   std::string sz = std::to_string(size);
   //convert from string to char *
   const char * str_to_chr = sz.c_str();
-  //printf("%s\n", p.data);
 
   printf("Sending file length: %ld\n", size);
-  //sleep(2);
   pack_num++;
   packet p_size(SIZE, pack_num, str_to_chr);
   size_sent = send_packet(p_size, sockid, client_addr);
@@ -114,9 +112,7 @@ int main(int argc, char *argv[])
 
   cw.init(&list_lock, 4, sockid, client_addr);
   //start receiving thread
-  //rcv_loop(list_lock, cw, rcv_sockid, rcv_addr, last_packet_num);
-  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
-  //cw.shift_win(&list_lock, sockid, client_addr);
+  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, client_addr, last_packet_num);
 
   while (true) 
   {

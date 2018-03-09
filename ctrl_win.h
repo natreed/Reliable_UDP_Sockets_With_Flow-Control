@@ -74,12 +74,13 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
 void ctrl_win::shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, 
 char type, char * data)
 {
+      int status;
       pack_num += 1;  //increment packet number
       packet p(type, pack_num, data);
       try 
       {
         //TODO: This needs to be done more than once as window grows
-        send_packet(p, sockid, client_addr);
+        status = send_packet(p, sockid, client_addr);
       }
       catch (const std::exception& e) {}
       //if not end of file pop from front and append new packet
