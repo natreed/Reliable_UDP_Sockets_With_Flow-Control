@@ -102,19 +102,34 @@ typedef std::list <ctrl_node> ctrl_list;
 
 void insert_packet (std::list<packet>  & pack_list, packet p) 
 {
-  std::list<packet>::iterator pi = pack_list.begin();;
-  for(pi; pi != pack_list.end(); pi++)
-  {
-    if (p.packet_num < pi->packet_num) {
-      pi++;
-    }
-    else if (p.packet_num == pi->packet_num) {
+  std::list<packet>::iterator pi = pack_list.begin();
+  
+    if (pack_list.empty())
+    {
+      pack_list.insert(pi, p);
       return;
     }
-    else {
+  
+  for(pi; pi !=  pack_list.end(); pi++)
+  {
+    if (p.packet_num == pi->packet_num) {
+      return;
+    }
+    else if (p.packet_num > pi->packet_num) {
+      continue;
+    }
+    else if (pi == pack_list.end())
+    {
       pack_list.insert(pi, p);
+      return;
+    }
+    else
+    {
+      pack_list.insert(pi, p);
+      return;
     }
   }
+  pack_list.insert(pi, p);
 }
 
 //Error msg Function

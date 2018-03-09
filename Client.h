@@ -53,7 +53,7 @@ void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, socka
         p.status = ACKED;
         m.lock();
         insert_packet(packetlist, p);
-        m.lock();
+        m.unlock();
         packet p_ack('A', p.packet_num, "\0");
         send_packet(p_ack, sockid, s_addr);
      }

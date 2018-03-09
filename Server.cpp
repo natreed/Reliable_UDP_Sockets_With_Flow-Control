@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
   cw.init(&list_lock, 4, sockid, client_addr);
   //start receiving thread
-  rcv_loop(list_lock, cw, rcv_sockid, rcv_addr, last_packet_num);
+  //rcv_loop(list_lock, cw, rcv_sockid, rcv_addr, last_packet_num);
   std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
   //cw.shift_win(&list_lock, sockid, client_addr);
 
