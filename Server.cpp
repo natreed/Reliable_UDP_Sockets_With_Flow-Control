@@ -1,6 +1,8 @@
 #include "utilities.h"
 #include "Server.h"
 
+bool SERVER_READY;
+
 int main(int argc, char *argv[]) 
 {
 
@@ -12,8 +14,6 @@ int main(int argc, char *argv[])
   char buffer[DATA_SZ];
   int last_packet_num = 0;
   std::mutex list_lock;
-
-  
 
   if (argv[2]) 
   {
@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
   //TODO: what to do here so that multiple connections can
   //be initiated
   hs_server(client_addr, sockid);
+
   set_timeout(sockid);
   size_sent = 0;
 
@@ -111,8 +112,14 @@ int main(int argc, char *argv[])
   ctrl_win cw(4, fp);
 
   cw.init(&list_lock, 4, sockid, client_addr);
+
+  
+  //connect with rcv_addr of client
+  status = hs_server(rcv_addr, rcv_sockid);
+	printf("Beginning data transmission. . .\n");
+  
   //start receiving thread
-  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, client_addr, last_packet_num);
+  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
 
   while (true) 
   {
@@ -123,7 +130,7 @@ int main(int argc, char *argv[])
     }
 
   }
-  //rcv_thread.join();
+  rcv_thread.join();
   return 0;
 }
 

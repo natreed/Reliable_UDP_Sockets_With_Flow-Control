@@ -1,6 +1,5 @@
 #include "utilities.h"
 #include "ctrl_win.h"
-
 //handshake function for server
 int hs_server (struct sockaddr_in  client_addr, int sockid)
 {
@@ -13,10 +12,7 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
   {
     rcv_msg(buffer, sockid, &client_addr);
   }
-  catch(const std::exception & e)
-  {
-
-  }
+  catch(const std::exception & e){}
   printf("hs msg received");
   deserialize(&hs_packet, buffer);
   printf("hs_packet  deserialized");
@@ -37,13 +33,14 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
   }
 }
 
+
+
 //function to run in thread from main for receiving messages
 void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
 {
   int i = 0;
   for (int i = 0; i < last_packet_num; i++)
   {
-     
     char buffer[DATA_SZ];
     rcv_msg(buffer, sockid, &s_addr);
     packet p;
@@ -52,8 +49,25 @@ void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, in
     m.lock();
     cw.log_ack(p.packet_num);
     m.unlock();
-    
   }
 }
+
+/*
+int new_socket_connection (struct sockaddr_in  client_addr, int sockid)
+{
+  int status = 0;
+  //Signal client that that we are waithing on another socket
+  try
+  {
+    rcv_msg(buffer, sockid, &client_addr);
+  }
+  catch(const std::exception & e){}
+  packet p(WAITING, 0, "\0");
+  status = send_packet(p,  sockid, client_addr);
+  check_retval(status, "Failed in new_socket_connection: rcv_msg");
+  
+
+}
+*/
 
 

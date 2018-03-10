@@ -2,8 +2,8 @@
 
 
 
-void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid, 
-    sockaddr_in s_addr, int & max_packet_num, int last_packet_num,  std::ofstream & outfile, bool & all_done) 
+void write_data(std::mutex & m, std::list<packet> & packet_list, 
+    int & max_packet_num, int last_packet_num,  std::ofstream & outfile, bool & all_done) 
 {
   int previous_packet_num = -1;
   while (true) 
@@ -13,7 +13,8 @@ void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid,
     {
       continue;
     }
-    if ((packet_list.front().packet_num == previous_packet_num +1 ||packet_list.front().packet_num == 0) && packet_list.front().status == ACKED)
+    if ((packet_list.front().packet_num == previous_packet_num +1 ||
+          packet_list.front().packet_num == 0) && packet_list.front().status == ACKED)
     {
       if (packet_list.front().msg_type == 'D')
       {
@@ -35,12 +36,13 @@ void write_data(std::mutex & m, std::list<packet> & packet_list, int sockid,
   }
 }
 
-void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr, int & max_packet_num, int window_size, bool & all_done) 
+//Thread receives and inserts into client packet list. 
+void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr,
+    int  max_packet_num, int window_size, bool & all_done)
 {
-  char buffer[PACK_SZ];
-  set_null(buffer);
   while(!all_done)
   {
+    char buffer[PACK_SZ];
     rcv_msg(buffer, sockid, &s_addr);
     if (packetlist.size() <= window_size)
     {
@@ -54,14 +56,41 @@ void send_acks(std::mutex & m, std::list<packet> & packetlist, int sockid, socka
       m.lock();
       insert_packet(packetlist, p);
       m.unlock();
-      packet p_ack(ACK, p.packet_num, "\0");
-      send_packet(p_ack, sockid, s_addr);
     }
   }
 }
 
+void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockaddr_in s_addr, 
+    int & max_packet_num, int window_size, bool & all_done) 
+{
+  while(!all_done)
+  {
+    std::list<packet>::iterator pi = pack_list.begin();
+
+    if (pack_list.empty())
+    {
+      continue;
+    }
+
+
+    for(pi; pi !=  pack_list.end(); pi++)
+    {
+      if (pi->status != ACKED)
+      {
+        packet p(ACK, pi->packet_num, "\0");
+        send_packet(p, sockid, s_addr);
+        pi->status = ACKED;
+      }
+    }
+  }
+}
+
+
 int client_handshake (struct sockaddr_in serv_addr, int sockid) 
 {
+  //sleep to give server a chance to get ready
+  //once we get the timer working, we can resend.
+  sleep(1);
   int status = 0;
   char buffer[PACK_SZ];
   unsigned int length = sizeof(struct sockaddr_in);
@@ -88,3 +117,20 @@ int client_handshake (struct sockaddr_in serv_addr, int sockid)
   return status;
 
 }
+
+/*
+   int new_socket_connection (struct sockaddr_in  serv_addr, int sockid)
+   {
+   int status = 0;
+   char buffer[DATA_SZ];
+//send_msg
+//Wait for signal to connect from server
+rcv_msg(buffer, sockid, &serv_addr);
+
+check_retval(status, "Failed in new_socket_connection: rcv_msg");
+packet p(ACK, 0, "\0");
+send_packet(p, sockid, serv_addr);
+
+
+}*/
+

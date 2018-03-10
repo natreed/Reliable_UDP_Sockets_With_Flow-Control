@@ -29,6 +29,7 @@ const int MAX_ATTEMPTS = 5;
 const int TIMEOUT = 2;
 const int MAX_WIN_SZ = 30;
 
+
 //Message Codes:
 char HANDSHAKE = 'H'; //H : handshake
 char SIZE = 'S';      //S : size of file (server)
@@ -36,6 +37,8 @@ char REQUEST = 'R';   //R : Request (client)
 char ACK = 'A';       //A : ACK
 char DATA = 'D';      //D : Data
 char CLOSE = 'C';      //D : Data
+//Signal to client that server is waiting to receive
+char WAITING = 'W';
 
 enum packet_status :  short  {UNUSED, SENT, ACKED};
 
@@ -48,7 +51,6 @@ void deserialize (struct packet* p, char * buffer);
 class ctrl_node;
 int st_wrapper(ctrl_node cn) ;
 int  set_timeout_(); 
-
 
 //packet
 typedef struct packet 

@@ -9,7 +9,7 @@ int main (int argc, char * argv[])
   //char filepath[100] = argv[2];
   portno = atoi(argv[2]);
   char * fp_get = argv[3];
-  
+
   struct sockaddr_in serv_addr, rcv_addr;
   char buffer [PACK_SZ];
   packet p;
@@ -37,17 +37,21 @@ int main (int argc, char * argv[])
   rcv_addr.sin_family = PF_INET;
   rcv_addr.sin_port = ntohs(portno + 1);
   bcopy((char*) server_ip.h_addr, (char*) &rcv_addr.sin_addr, server_ip.h_length);
+/*
+  status = bind(sockid, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  check_retval(status, "status, binding socket");
 
-
+  status = bind(rcv_sockid, (struct sockaddr*) &rcv_addr, sizeof(rcv_addr));
+  check_retval(status, "status, binding socket");
+ */ 
   printf("%s","Initiate handshake with server. . .\n");
+  //handshake for send_ack thread
   status = client_handshake(serv_addr, sockid);
+
   printf("%s", "Acknowledgement received from server . . .\n");
  
   std::list<packet> packetlist;
   int previous_packet_num = 0;
-
-
-  
   
   //args are (packet number, sockid, sockaddr_in, filepath)
   packet_num++;
@@ -72,13 +76,18 @@ int main (int argc, char * argv[])
   
   std::ofstream outfile ("download.txt",std::ofstream::binary);
   int prev_packet_num = packet_num-1;
+ 
+  //open new socket for send_ack thread
+  status = client_handshake(rcv_addr, rcv_sockid);
+
+	printf("Beginning receiving data . . .\n");
+ // std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, rcv_addr,  std::ref(max_packet), window_size, std::ref(all_done));
+  //write_data(list_lock, ctrl_list, rcv_sockid, max_packet, last_packet_num, outfile, all_done);
+
+  std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), std::ref(max_packet), last_packet_num, 
+    std::ref(outfile), std::ref(all_done));
   
-
-	printf("Beginning data transmission . . .\n");
-  std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr,  std::ref(max_packet), window_size, std::ref(all_done));
-  write_data(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, last_packet_num, outfile, all_done);
-  //std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), rcv_sockid, rcv_addr, std::ref(max_packet), last_packet_num, std::ref(outfile), std::ref(all_done));
-
+  send_acks(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, window_size, all_done);
   printf("Data transmission complete . . .\n");
   close(sockid);
   return 0;
