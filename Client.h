@@ -44,15 +44,22 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
   {
     char buffer[PACK_SZ];
     rcv_msg(buffer, sockid, &s_addr);
+    
     if (packetlist.size() <= window_size)
     {
       packet p;
       deserialize(&p, buffer);
+
+      //if packet is outside the window, drop it
+      if (p.msg_type != DATA && p.msg_type != CLOSE)
+      {
+        char msg[100]  = "msg_type: is not DATA or CLOSE";
+        perror("msg_type: %s not data or close packet.\n");
+      }
       if (p.packet_num > max_packet_num)
       {
         continue;
       }
-      p.status = ACKED;
       m.lock();
       insert_packet(packetlist, p);
       m.unlock();

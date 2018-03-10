@@ -45,6 +45,11 @@ void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, in
     rcv_msg(buffer, sockid, &s_addr);
     packet p;
     deserialize(&p, buffer);
+    if (p.msg_type != ACK) 
+    {
+      char  msg[100] = "not receiving ACK. Wrong msg type";
+      perror(msg);
+    }
     //lock 
     m.lock();
     cw.log_ack(p.packet_num);

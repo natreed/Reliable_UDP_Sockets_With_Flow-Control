@@ -81,8 +81,8 @@ int main (int argc, char * argv[])
   status = client_handshake(rcv_addr, rcv_sockid);
 
 	printf("Beginning receiving data . . .\n");
- // std::thread send_ack_thread(send_acks, std::ref(list_lock), std::ref(ctrl_list), sockid, rcv_addr,  std::ref(max_packet), window_size, std::ref(all_done));
-  //write_data(list_lock, ctrl_list, rcv_sockid, max_packet, last_packet_num, outfile, all_done);
+  std::thread rcv_and_insert(rcv_insert, std::ref(list_lock), std::ref(packetlist), sockid, serv_addr,
+    std::ref(max_packet), window_size, std::ref(all_done));
 
   std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), std::ref(max_packet), last_packet_num, 
     std::ref(outfile), std::ref(all_done));
