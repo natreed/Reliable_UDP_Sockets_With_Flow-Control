@@ -67,7 +67,8 @@ int main (int argc, char * argv[])
   deserialize(&p, buffer);
   file_size = atoi(p.data);
   printf("Msg size %s received . . .\n", p.data);
-  int last_packet_num = ceil(file_size / DATA_SZ);
+  int last_packet_num = file_size / DATA_SZ;
+  printf("last_packet_num: %d\n", last_packet_num);
   packet p_ack(ACK, packet_num, "ack");
   //send file size acknowlegement
   packet_num++;
