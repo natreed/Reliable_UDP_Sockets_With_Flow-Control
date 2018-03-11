@@ -97,14 +97,18 @@ char type, char * data)
 
 void ctrl_win::log_ack(int pack_num)
 {
-  int windex = (pack_num + cl.size()) % cl.size();
   //iterate to the sequential node of the index
   std::list<ctrl_node>::iterator cl_iterator = cl.begin();
-  for (int i = 0; i <= windex; ++i) 
+  for (int i = 0; i < cl.size(); ++i) 
   {
+    if (cl_iterator->get_pack_num() == pack_num)
+    {
+      cl_iterator->set_status(ACKED);
+      break;
+    }
+
     cl_iterator++;
   }
-  cl_iterator->set_status(ACKED);
 }
 
 //send first win_size messages and initialize window list
@@ -148,6 +152,7 @@ void ctrl_win::init (std::mutex * m, int win_sz, int sockid, struct sockaddr_in 
     }
     pack_num++;
   }
+  pack_num--;
 }
 
 

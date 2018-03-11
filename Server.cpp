@@ -109,9 +109,9 @@ int main(int argc, char *argv[])
   printf("Sending data...\n");
 
   //step one: send first win_sz packets and add to ctrl window
-  ctrl_win cw(4, fp);
+  ctrl_win cw(2, fp);
 
-  cw.init(&list_lock, 5, sockid, client_addr);
+  cw.init(&list_lock, 2, sockid, client_addr);
 
   
   //connect with rcv_addr of client

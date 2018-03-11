@@ -41,7 +41,7 @@ char CLOSE = 'C';      //D : Data
 //Signal to client that server is waiting to receive
 char WAITING = 'W';
 
-enum packet_status :  short  {UNUSED, SENT, ACKED};
+enum packet_status :  short  {UNUSED = 0, SENT= 1, ACKED = 2};
 
 //prototypes
 void set_null(char *);
@@ -88,7 +88,8 @@ class ctrl_node
     client_addr = s;
   }
   int get_status() {return status;}
-  void set_status(int s) {status = s;} 
+  void set_status(int s) {status = s;}
+  int get_pack_num() {return p.packet_num;}
   private:
     
     bool running;

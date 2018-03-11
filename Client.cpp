@@ -5,7 +5,7 @@ int main (int argc, char * argv[])
   struct hostent  server_ip = *gethostbyname(argv[1]);
   int sockid, rcv_sockid, portno, status, packet_num = 0, file_size;
   unsigned int length;
-  int window_size = 5;
+  int window_size = 2;
   //char filepath[100] = argv[2];
   portno = atoi(argv[2]);
   char * fp_get = argv[3];
@@ -50,7 +50,6 @@ int main (int argc, char * argv[])
 
   printf("%s", "Acknowledgement received from server . . .\n");
  
-  std::list<packet> packetlist;
   int previous_packet_num = 0;
   
   //args are (packet number, sockid, sockaddr_in, filepath)
@@ -81,7 +80,7 @@ int main (int argc, char * argv[])
   status = client_handshake(rcv_addr, rcv_sockid);
 
 	printf("Beginning receiving data . . .\n");
-  std::thread rcv_and_insert(rcv_insert, std::ref(list_lock), std::ref(packetlist), sockid, serv_addr,
+  std::thread rcv_and_insert(rcv_insert, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr,
     std::ref(max_packet), window_size, std::ref(all_done));
 
   std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), std::ref(max_packet), last_packet_num, 
