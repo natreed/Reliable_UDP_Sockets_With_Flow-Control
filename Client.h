@@ -98,6 +98,7 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
       {
         packet p(ACK, pi->packet_num, "\0");
         send_packet(p, sockid, s_addr);
+        printf("Sending ack packet, packet number: %d\n", p.packet_num);
         pi->status = ACKED;
       }
     }

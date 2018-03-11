@@ -105,7 +105,7 @@ void ctrl_win::log_ack(int pack_num)
   {
     if (cl_iterator->get_pack_num() == pack_num)
     {
-      printf("Logging packet number %d\n", pack_num);
+      printf("Logging ack, packet number: %d\n", pack_num);
       cl_iterator->set_status(ACKED);
       break;
     }
