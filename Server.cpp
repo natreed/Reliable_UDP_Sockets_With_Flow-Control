@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
   //step one: send first win_sz packets and add to ctrl window
   ctrl_win cw(4, fp);
 
-  cw.init(&list_lock, 4, sockid, client_addr);
+  cw.init(&list_lock, 5, sockid, client_addr);
 
   
   //connect with rcv_addr of client
@@ -119,17 +119,13 @@ int main(int argc, char *argv[])
 	printf("Beginning data transmission. . .\n");
   
   //start receiving thread
-  std::thread rcv_thread(rcv_loop, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
+  std::thread rcv_thread(rcv_acks, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
 
-  while (true) 
+  if (!cw.win_mgr(&list_lock, sockid, client_addr))
   {
-    if (!cw.win_mgr(&list_lock, sockid, client_addr))
-    {
-      close(sockid);
-      break;
-    }
-
+    close(sockid);
   }
+
   rcv_thread.join();
   return 0;
 }

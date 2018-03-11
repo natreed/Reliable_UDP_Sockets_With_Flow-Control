@@ -22,6 +22,7 @@
 #include <thread>
 #include <mutex>
 #include <math.h>
+#include <assert.h>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;
@@ -46,7 +47,7 @@ enum packet_status :  short  {UNUSED, SENT, ACKED};
 void set_null(char *);
 struct packet;
 int send_packet (packet, int sockid, sockaddr_in s_addr); 
-void rcv_msg (char *   buffer, int sockid, sockaddr_in * s_addr);
+int rcv_msg (char *   buffer, int sockid, sockaddr_in * s_addr);
 void deserialize (struct packet* p, char * buffer);
 class ctrl_node;
 int st_wrapper(ctrl_node cn) ;
@@ -189,18 +190,20 @@ void set_timeout (int sockid) {
   }
 }
 
-void rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
+int rcv_msg (char * buffer, int sockid, sockaddr_in * s_addr)
 { 
   set_null(buffer);
+  int status;
   unsigned int s_addr_len = sizeof(struct sockaddr_in);
   try
   {
-    recvfrom (sockid, buffer, PACK_SZ, 0, (struct sockaddr *) s_addr, &s_addr_len);
+    status = recvfrom (sockid, buffer, PACK_SZ, 0, (struct sockaddr *) s_addr, &s_addr_len);
   }
   catch(const std::exception& e)
   {
-    printf("%s", "failed to receive message");
+    throw e;
   }
+  return status;
 }
 
 

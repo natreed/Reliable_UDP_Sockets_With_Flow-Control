@@ -36,7 +36,7 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
 
 
 //function to run in thread from main for receiving messages
-void  rcv_loop(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
+void  rcv_acks(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
 {
   int i = 0;
   for (int i = 0; i < last_packet_num; i++)
