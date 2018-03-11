@@ -23,7 +23,8 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
         packet_list.pop_front();
         m.unlock();
         outfile.write(p.data, p.msg_size);
-
+		
+        printf("Writing data, packet number: %d\n", p.packet_num);
         previous_packet_num = p.packet_num;
         max_packet_num++;
         if (p.packet_num == last_packet_num)
@@ -46,7 +47,8 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
     set_null(buffer);
     int status;
     status = rcv_msg(buffer, sockid, &s_addr);
-    
+      
+
     //TODO: REAL PATCHY DOESNT FIX RCV MSG FAILURE
     if (buffer[0] == '\0')
     {
@@ -59,6 +61,7 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
       packet p;
       deserialize(&p, buffer);
 
+      printf("received packet, packet number: %d\n", p.packet_num);
       //if packet is outside the window, drop it
       if (p.msg_type != DATA && p.msg_type != CLOSE)
       {

@@ -58,6 +58,7 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
 
     if (!fs.eof())  //check for end of file
     {
+      printf("Shifting window...\n");
       shift_win(m, sockid, client_addr, DATA, data);
     }
     else 
@@ -81,6 +82,7 @@ char type, char * data)
       {
         //TODO: This needs to be done more than once as window grows
         status = send_packet(p, sockid, client_addr);
+        printf("Sending new packet in Shift:window and popping first packet. Packet num: %d\n", pack_num);
       }
       catch (const std::exception& e) {}
       //if not end of file pop from front and append new packet
@@ -103,6 +105,7 @@ void ctrl_win::log_ack(int pack_num)
   {
     if (cl_iterator->get_pack_num() == pack_num)
     {
+      printf("Logging packet number %d\n", pack_num);
       cl_iterator->set_status(ACKED);
       break;
     }
