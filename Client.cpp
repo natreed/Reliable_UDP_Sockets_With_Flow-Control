@@ -44,7 +44,7 @@ int main (int argc, char * argv[])
   status = bind(rcv_sockid, (struct sockaddr*) &rcv_addr, sizeof(rcv_addr));
   check_retval(status, "status, binding socket");
  */ 
-  printf("%s","Initiate handshake with server. . .\n");
+  printf("\n%s","Initiate handshake with server. . .\n");
   //handshake for send_ack thread
   status = client_handshake(serv_addr, sockid);
 
@@ -68,7 +68,6 @@ int main (int argc, char * argv[])
   file_size = atoi(p.data);
   printf("Msg size %s received . . .\n", p.data);
   int last_packet_num = file_size / DATA_SZ;
-  printf("last_packet_num: %d\n", last_packet_num);
   packet p_ack(ACK, packet_num, "ack");
   //send file size acknowlegement
   packet_num++;
@@ -80,7 +79,7 @@ int main (int argc, char * argv[])
   //open new socket for send_ack thread
   status = client_handshake(rcv_addr, rcv_sockid);
 
-	printf("Beginning receiving data . . .\n");
+	printf("\nBeginning receiving data . . .\n");
   std::thread rcv_and_insert(rcv_insert, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr,
     std::ref(max_packet), window_size, std::ref(all_done));
 
@@ -88,7 +87,7 @@ int main (int argc, char * argv[])
     std::ref(outfile), std::ref(all_done));
   
   send_acks(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, window_size, all_done);
-  printf("Data transmission complete . . .\n");
+  printf("\nData transmission complete . . .\n\n");
   rcv_and_insert.join();
   write_data_thread.join();
   close(sockid);

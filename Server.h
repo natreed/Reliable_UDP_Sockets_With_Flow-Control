@@ -39,13 +39,13 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
 void  rcv_acks(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
 {
   int i = 0;
-  for (int i = 0; i < last_packet_num; i++)
+  for (int i = 0; i <= last_packet_num; i++)
   {
     char buffer[DATA_SZ];
     rcv_msg(buffer, sockid, &s_addr);
     packet p;
     deserialize(&p, buffer);
-    printf("packet ack received, Packet number: %d\n", p.packet_num);
+    printf("Packet ack received, Packet number: %d\n", p.packet_num);
     if (p.msg_type != ACK) 
     {
       char  msg[100] = "not receiving ACK. Wrong msg type";

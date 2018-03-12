@@ -46,7 +46,8 @@ void ctrl_win::pop_cnode()
 //return value of 0 indicates that all acks have been receive/
 int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr)
 {
-  while (!cl.empty())
+  bool flagForDone = true;
+  while (!cl.empty() && flagForDone)
   {
     if (cl.front().get_status() != ACKED) 
     {
@@ -64,11 +65,12 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
     }
     else 
     {
-      printf("Shifting window...(end of file, sending close packet)");
+      printf("Shifting window...(end of file, sending close packet)\n");
       shift_win(m, sockid, client_addr, CLOSE, data);
+      flagForDone = false;
     }
   }
-  if (cl.empty()) {
+  if (cl.empty() || !flagForDone) {
     return 0;
   }   
   return 1;
@@ -120,7 +122,6 @@ void ctrl_win::log_ack(int pack_num)
       cl_iterator->set_status(ACKED);
       break;
     }
-
     cl_iterator++;
   }
 }
@@ -133,7 +134,7 @@ void ctrl_win::init (std::mutex * m, int win_sz, int sockid, struct sockaddr_in 
   { 
     char data[DATA_SZ];
     fs.read(data, DATA_SZ);
-    printf("DATA : %s\n", data);
+    //printf("DATA : %s\n", data);
     if (!fs.eof()) 
     {
       //if not end of file pop from front and append new packet
