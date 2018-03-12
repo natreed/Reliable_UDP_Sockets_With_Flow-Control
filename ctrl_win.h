@@ -54,15 +54,17 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
     }
     //to move window pop first node. create and add last nodae.
     char  data[DATA_SZ]; 
+    set_null(data);
     fs.read(data, DATA_SZ);  //get data to send
 
     if (!fs.eof())  //check for end of file
     {
-      printf("Shifting window...\n");
+      printf("Shifting window...(not end of file)\n");
       shift_win(m, sockid, client_addr, DATA, data);
     }
     else 
     {
+      printf("Shifting window...(end of file, sending close packet)");
       shift_win(m, sockid, client_addr, CLOSE, data);
     }
   }
@@ -85,14 +87,23 @@ char type, char * data)
         printf("Sending new packet in Shift:window and popping first packet. Packet num: %d\n", pack_num);
       }
       catch (const std::exception& e) {}
-      //if not end of file pop from front and append new packet
-      ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
-      cn.set_status(SENT);
-      m->lock();
-      pop_cnode();            //pop front of ctrl list
-      append_cnode(cn);  //append to end of ctrl list
-      m->unlock();
-      //start timer thread
+      if(type == CLOSE)
+      {
+        m->lock();
+        pop_cnode();
+        m->unlock();
+      }
+      else
+      {
+        //if not end of file pop from front and append new packet
+        ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
+        cn.set_status(SENT);
+        m->lock();
+        pop_cnode();            //pop front of ctrl list
+        append_cnode(cn);  //append to end of ctrl list
+        m->unlock();
+        //start timer thread
+      }
 }
 
 

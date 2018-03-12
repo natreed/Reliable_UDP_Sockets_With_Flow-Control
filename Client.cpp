@@ -89,7 +89,10 @@ int main (int argc, char * argv[])
   
   send_acks(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, window_size, all_done);
   printf("Data transmission complete . . .\n");
+  rcv_and_insert.join();
+  write_data_thread.join();
   close(sockid);
+  close(rcv_sockid);
   return 0;
 }
 
