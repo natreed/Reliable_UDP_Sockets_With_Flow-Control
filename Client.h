@@ -18,8 +18,8 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
     {
       if (packet_list.front().msg_type == 'D')
       {
-        packet p = packet_list.front(); 
         m.lock();
+        packet p = packet_list.front(); 
         packet_list.pop_front();
         m.unlock();
         outfile.write(p.data, p.msg_size);
@@ -84,15 +84,16 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
 {
   while(!all_done)
   {
+    m.lock();
     std::list<packet>::iterator pi = pack_list.begin();
-
+    m.unlock();
     if (pack_list.empty())
     {
       continue;
     }
 
-
-    for(pi; pi !=  pack_list.end(); pi++)
+    m.lock();
+    for(pi; pi !=  pack_list.end(); ++pi)
     {
       if (pi->status != ACKED)
       {
@@ -102,6 +103,7 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
         pi->status = ACKED;
       }
     }
+    m.unlock();
   }
 }
 
