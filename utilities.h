@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <pthread.h>
 #include <thread>
+#include <chrono>
 #include <mutex>
 #include <math.h>
 #include <assert.h>
@@ -90,6 +91,8 @@ class ctrl_node
   int get_status() {return status;}
   void set_status(int s) {status = s;}
   int get_pack_num() {return p.packet_num;}
+  
+  std::chrono::high_resolution_clock::time_point time_started;
   private:
     
     bool running;

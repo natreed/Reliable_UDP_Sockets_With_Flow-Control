@@ -14,7 +14,8 @@ int main(int argc, char *argv[])
   char buffer[DATA_SZ];
   int last_packet_num = 0;
   std::mutex list_lock;
-
+  bool exit_timer_thread = true;
+ 
   if (argv[2]) 
   {
     max_win_sz = atoi(argv[2]);
@@ -119,14 +120,16 @@ int main(int argc, char *argv[])
   
   //start receiving thread
   std::thread rcv_thread(rcv_acks, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
-
+  std::thread timer_thread(resend_timer, std::ref(list_lock), std::ref(cw), std::ref(exit_timer_thread));
   if (!cw.win_mgr(&list_lock, sockid, client_addr))
   {
     close(sockid);
   }
+  exit_timer_thread = false;
   close(sockid);
   close(rcv_sockid);
   rcv_thread.join();
+  timer_thread.join();
   printf("\nData transmisssion complete. . .\n\n");
   return 0;
 }

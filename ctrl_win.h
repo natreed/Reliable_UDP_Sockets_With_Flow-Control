@@ -19,6 +19,7 @@ class ctrl_win
     void init(std::mutex * m, int win_sz, int sockid, struct sockaddr_in client_addr);
     void append_cnode(ctrl_node cn);
     void log_ack(int);
+    void check_time_resend();
     void pop_cnode();
     //function to shift window when ack is recieved
     //for first element
@@ -40,6 +41,29 @@ void ctrl_win::append_cnode (ctrl_node cn)
 void ctrl_win::pop_cnode()
 {
   cl.pop_front();
+}
+
+void ctrl_win::check_time_resend()
+{
+  //return if no nodes in list
+  if(cl.empty())
+  {
+    return;
+  }
+  //get the current time and iterate over nodes
+  std::list<ctrl_node>::iterator cl_iterator = cl.begin();
+  std::chrono::high_resolution_clock::time_point current_time = std::chrono::high_resolution_clock::now();
+  for(int i = 0; i < cl.size(); i++)
+  {
+    //if the duration of the current time and the time that the node was send is greater than 200 milliseconds, resend
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(cl_iterator->time_started - current_time).count() > 200)
+    {
+      //TODO send out expired packet and reset time
+      printf("resending expired packet\n");
+    }
+    cl_iterator++;
+
+  }
 }
 
 //TODO: This function could run on a thread
@@ -100,11 +124,12 @@ char type, char * data)
         //if not end of file pop from front and append new packet
         ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
         cn.set_status(SENT);
+        cn.time_started = std::chrono::high_resolution_clock::now();
         m->lock();
         pop_cnode();            //pop front of ctrl list
         append_cnode(cn);  //append to end of ctrl list
         m->unlock();
-        //start timer thread
+        
       }
 }
 

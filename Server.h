@@ -4,7 +4,7 @@
 int hs_server (struct sockaddr_in  client_addr, int sockid)
 {
   char buffer[PACK_SZ];
-  printf("Awaiting connection...\n");
+  printf("\nAwaiting connection...\n");
   //receive hello/handshake
   const char * handshake_msg = "ACK";
   packet hs_packet;
@@ -33,7 +33,22 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
   }
 }
 
+//function to run in thread from main for waking up every n milliseconds and resending packets that time expired.
+void resend_timer(std::mutex &m, ctrl_win & cw, bool &exit_flag)
+{
+  while(exit_flag)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    m.lock();
+    cw.check_time_resend();
+    m.unlock();
+    
+  }
 
+
+
+}
 
 //function to run in thread from main for receiving messages
 void  rcv_acks(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, int last_packet_num)
