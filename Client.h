@@ -26,9 +26,11 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
 		
         printf("Writing data, packet number: %d\n", p.packet_num);
         previous_packet_num = p.packet_num;
-        max_packet_num++;
         if (p.packet_num == last_packet_num)
         {
+          printf("p.packet_num: %d\n", p.packet_num);
+	      printf("last_packet_num: %d\n", last_packet_num);
+          printf("PacketList front: packet number: %d\n", packet_list.front().packet_num);
           all_done = true;
           return;
         }
