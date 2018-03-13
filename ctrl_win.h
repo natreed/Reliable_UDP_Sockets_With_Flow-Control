@@ -95,7 +95,20 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
       flagForDone = false;
     }
   }
-  if (cl.empty() || !flagForDone) {
+  while(true)
+  {
+    if(cl.empty())
+    {
+      break;
+    }
+    if(cl.front().get_status() == ACKED)
+    {
+      m->lock();
+      pop_cnode();
+      m->unlock();
+    }
+  }
+  if (cl.empty() && !flagForDone) {
     return 0;
   }   
   return 1;
