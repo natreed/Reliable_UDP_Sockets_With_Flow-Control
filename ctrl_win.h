@@ -24,7 +24,7 @@ class ctrl_win
     //function to shift window when ack is recieved
     //for first element
     int win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr);
-    void shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, char type, char * data);
+    void shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, char type, std::list<packet> data);
   private:
     int pack_num;  
     int w_size;
@@ -79,19 +79,38 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
       continue;
     }
     //to move window pop first node. create and add last nodae.
+    
+    std::list<packet> p_list;
     char  data[DATA_SZ]; 
-    set_null(data);
-    fs.read(data, DATA_SZ);  //get data to send
-
+    for(int i = 0; i < 2; i++)
+    {
+      if(!fs.eof())
+      {    
+        set_null(data);
+        fs.read(data, DATA_SZ);  //get data to send
+        pack_num +=1;
+        if(!fs.eof())
+        {
+          packet p(DATA, pack_num, data);
+          p_list.push_back(p);
+        }
+        else
+        {
+          packet p(CLOSE, pack_num, data);
+          p_list.push_back(p);
+          break;
+        }
+      }
+    }
     if (!fs.eof())  //check for end of file
     {
       printf("Shifting window...(not end of file)\n");
-      shift_win(m, sockid, client_addr, DATA, data);
+      shift_win(m, sockid, client_addr, DATA, p_list);
     }
     else 
     {
       printf("Shifting window...(end of file, sending close packet)\n");
-      shift_win(m, sockid, client_addr, CLOSE, data);
+      shift_win(m, sockid, client_addr, CLOSE, p_list);
       flagForDone = false;
     }
   }
@@ -115,36 +134,39 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
 }
 
 void ctrl_win::shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, 
-char type, char * data)
+char type, std::list<packet> data)
 {
       int status;
-      pack_num += 1;  //increment packet number
-      packet p(type, pack_num, data);
       try 
       {
+        std::list<packet>::iterator data_iterator = data.begin();
+        for(data_iterator; data_iterator != data.end(); data_iterator++)
+        {
         //TODO: This needs to be done more than once as window grows
-        status = send_packet(p, sockid, client_addr);
-        printf("Sending new packet in Shift:window and popping first packet. Packet num: %d\n", pack_num);
+          status = send_packet(*data_iterator, sockid, client_addr);
+           
+          if(type == CLOSE)
+          {
+            m->lock();
+            pop_cnode();
+            m->unlock();
+          }
+          else
+          {
+            //if not end of file pop from front and append new packet
+            ctrl_node cn(*data_iterator, sockid, client_addr);    //initialize control node w/ packet
+            cn.set_status(SENT);
+            cn.time_started = std::chrono::high_resolution_clock::now();
+            m->lock();
+            pop_cnode();            //pop front of ctrl list
+            append_cnode(cn);  //append to end of ctrl list
+            m->unlock();
+          }
+          printf("Sending new packet in Shift:window and popping first packet. Packet num: %d\n", data_iterator->packet_num);
+          w_size++;
+        }
       }
       catch (const std::exception& e) {}
-      if(type == CLOSE)
-      {
-        m->lock();
-        pop_cnode();
-        m->unlock();
-      }
-      else
-      {
-        //if not end of file pop from front and append new packet
-        ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
-        cn.set_status(SENT);
-        cn.time_started = std::chrono::high_resolution_clock::now();
-        m->lock();
-        pop_cnode();            //pop front of ctrl list
-        append_cnode(cn);  //append to end of ctrl list
-        m->unlock();
-        
-      }
 }
 
 
