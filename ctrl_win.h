@@ -171,15 +171,15 @@ char type, std::list<packet> data)
 
 
 
-void ctrl_win::log_ack(int pack_num)
+void ctrl_win::log_ack(int pack_number)
 {
   //iterate to the sequential node of the index
   std::list<ctrl_node>::iterator cl_iterator = cl.begin();
   for (int i = 0; i < cl.size(); ++i) 
   {
-    if (cl_iterator->get_pack_num() == pack_num)
+    if (cl_iterator->get_pack_num() == pack_number)
     {
-      printf("Logging ack, packet number: %d\n", pack_num);
+      printf("Logging ack, packet number: %d\n", pack_number);
       cl_iterator->set_status(ACKED);
       break;
     }

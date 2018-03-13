@@ -45,9 +45,6 @@ void resend_timer(std::mutex &m, ctrl_win & cw, bool &exit_flag, int sockid, soc
     m.unlock();
     
   }
-
-
-
 }
 
 //function to run in thread from main for receiving messages

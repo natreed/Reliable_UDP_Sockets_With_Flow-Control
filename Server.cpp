@@ -66,11 +66,6 @@ int main(int argc, char *argv[])
   rcv_msg (buffer, sockid, &client_addr);
   packet p_filepath;
   deserialize(&p_filepath, buffer);
-  //packet p_fp_ack(ACK, pack_num, "\0");
-  //size_sent = send_packet(p_fp_ack, sockid, client_addr); 
-
-  //deserialize data stream to  packet
-  //deserialize(&p_fp_ack, buffer);
 
   //Message recieved here is path of file to retrieve
   const char * fp = (const char*)&p_filepath.data;
@@ -87,7 +82,7 @@ int main(int argc, char *argv[])
   infile.seekg (0, infile.end);
   long size = infile.tellg();
   infile.seekg(0);
-  last_packet_num =ceil(size  / DATA_SZ);
+  last_packet_num =size  / DATA_SZ;
   //configure size as char *
   //use string to convert from integer
   std::string sz = std::to_string(size);
@@ -109,9 +104,9 @@ int main(int argc, char *argv[])
   pack_num = 0;
 
   //step one: send first win_sz packets and add to ctrl window
-  ctrl_win cw(2, fp);
+  ctrl_win cw(1, fp);
 
-  cw.init(&list_lock, 2, sockid, client_addr);
+  cw.init(&list_lock, 1, sockid, client_addr);
 
   
   //connect with rcv_addr of client
