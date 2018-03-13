@@ -19,6 +19,7 @@ class ctrl_win
     void init(std::mutex * m, int win_sz, int sockid, struct sockaddr_in client_addr);
     void append_cnode(ctrl_node cn);
     void log_ack(int);
+    void check_time_resend();
     void pop_cnode();
     //function to shift window when ack is recieved
     //for first element
@@ -42,11 +43,35 @@ void ctrl_win::pop_cnode()
   cl.pop_front();
 }
 
+void ctrl_win::check_time_resend()
+{
+  //return if no nodes in list
+  if(cl.empty())
+  {
+    return;
+  }
+  //get the current time and iterate over nodes
+  std::list<ctrl_node>::iterator cl_iterator = cl.begin();
+  std::chrono::high_resolution_clock::time_point current_time = std::chrono::high_resolution_clock::now();
+  for(int i = 0; i < cl.size(); i++)
+  {
+    //if the duration of the current time and the time that the node was send is greater than 200 milliseconds, resend
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(cl_iterator->time_started - current_time).count() > 200)
+    {
+      //TODO send out expired packet and reset time
+      printf("resending expired packet\n");
+    }
+    cl_iterator++;
+
+  }
+}
+
 //TODO: This function could run on a thread
 //return value of 0 indicates that all acks have been receive/
 int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr)
 {
-  while (!cl.empty())
+  bool flagForDone = true;
+  while (!cl.empty() && flagForDone)
   {
     if (cl.front().get_status() != ACKED) 
     {
@@ -54,19 +79,22 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
     }
     //to move window pop first node. create and add last nodae.
     char  data[DATA_SZ]; 
+    set_null(data);
     fs.read(data, DATA_SZ);  //get data to send
 
     if (!fs.eof())  //check for end of file
     {
-      printf("Shifting window...\n");
+      printf("Shifting window...(not end of file)\n");
       shift_win(m, sockid, client_addr, DATA, data);
     }
     else 
     {
+      printf("Shifting window...(end of file, sending close packet)\n");
       shift_win(m, sockid, client_addr, CLOSE, data);
+      flagForDone = false;
     }
   }
-  if (cl.empty()) {
+  if (cl.empty() || !flagForDone) {
     return 0;
   }   
   return 1;
@@ -85,14 +113,24 @@ char type, char * data)
         printf("Sending new packet in Shift:window and popping first packet. Packet num: %d\n", pack_num);
       }
       catch (const std::exception& e) {}
-      //if not end of file pop from front and append new packet
-      ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
-      cn.set_status(SENT);
-      m->lock();
-      pop_cnode();            //pop front of ctrl list
-      append_cnode(cn);  //append to end of ctrl list
-      m->unlock();
-      //start timer thread
+      if(type == CLOSE)
+      {
+        m->lock();
+        pop_cnode();
+        m->unlock();
+      }
+      else
+      {
+        //if not end of file pop from front and append new packet
+        ctrl_node cn(p, sockid, client_addr);    //initialize control node w/ packet
+        cn.set_status(SENT);
+        cn.time_started = std::chrono::high_resolution_clock::now();
+        m->lock();
+        pop_cnode();            //pop front of ctrl list
+        append_cnode(cn);  //append to end of ctrl list
+        m->unlock();
+        
+      }
 }
 
 
@@ -109,7 +147,6 @@ void ctrl_win::log_ack(int pack_num)
       cl_iterator->set_status(ACKED);
       break;
     }
-
     cl_iterator++;
   }
 }
@@ -122,7 +159,7 @@ void ctrl_win::init (std::mutex * m, int win_sz, int sockid, struct sockaddr_in 
   { 
     char data[DATA_SZ];
     fs.read(data, DATA_SZ);
-    printf("DATA : %s\n", data);
+    //printf("DATA : %s\n", data);
     if (!fs.eof()) 
     {
       //if not end of file pop from front and append new packet

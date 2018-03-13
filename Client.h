@@ -8,31 +8,46 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
   int previous_packet_num = -1;
   while (true) 
   {
-
-    if (packet_list.empty())
+    m.lock();
+    bool isEmpty = packet_list.empty();
+    m.unlock();
+    if (isEmpty)
     {
       continue;
     }
-    if ((packet_list.front().packet_num == previous_packet_num +1 ||
-          packet_list.front().packet_num == 0) && packet_list.front().status == ACKED)
+    else
     {
-      if (packet_list.front().msg_type == 'D')
+      m.lock();
+      packet p = packet_list.front();
+      m.unlock();
+      if ((p.packet_num == previous_packet_num +1 ||
+          p.packet_num == 0) && p.status == ACKED)
       {
-        m.lock();
-        packet p = packet_list.front(); 
-        packet_list.pop_front();
-        m.unlock();
-        outfile.write(p.data, p.msg_size);
-		
-        printf("Writing data, packet number: %d\n", p.packet_num);
-        previous_packet_num = p.packet_num;
-        if (p.packet_num == last_packet_num)
+        
+        if (p.msg_type == 'D')
         {
-          printf("p.packet_num: %d\n", p.packet_num);
-	      printf("last_packet_num: %d\n", last_packet_num);
-          printf("PacketList front: packet number: %d\n", packet_list.front().packet_num);
-          all_done = true;
-          return;
+          m.lock();
+          packet_list.pop_front();
+          m.unlock();
+          outfile.write(p.data, p.msg_size);
+		
+          printf("Writing data, packet number: %d\n", p.packet_num);
+          previous_packet_num = p.packet_num;
+          max_packet_num++;
+        }
+        else if(p.msg_type == 'C')
+        {
+           /*m.lock();
+           packet_list.pop_front();
+           m.unlock();
+           */
+           outfile.write(p.data, p.msg_size);
+ 
+           printf("Writing data, packet number: %d\n", p.packet_num); 
+           previous_packet_num = p.packet_num;
+           max_packet_num++;
+           all_done = true;
+           return;
         }
       }
     }
@@ -57,8 +72,10 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
       continue;
     }
 
-    
-    if (packetlist.size() <=  window_size)
+    m.lock();
+    int size = packetlist.size(); 
+    m.unlock();
+    if (size <=  window_size)
     {
       packet p;
       deserialize(&p, buffer);
@@ -77,6 +94,7 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
       m.lock();
       insert_packet(packetlist, p);
       m.unlock();
+      printf("Inserting packet into List, Packet number: %d\n", p.packet_num);
     }
   }
 }
@@ -88,13 +106,14 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
   {
     m.lock();
     std::list<packet>::iterator pi = pack_list.begin();
+    bool isEmpty = pack_list.empty();
     m.unlock();
-    if (pack_list.empty())
+    if (isEmpty)
     {
       continue;
     }
 
-    m.lock();
+   
     for(pi; pi !=  pack_list.end(); ++pi)
     {
       if (pi->status != ACKED)
@@ -102,11 +121,32 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
         packet p(ACK, pi->packet_num, "\0");
         send_packet(p, sockid, s_addr);
         printf("Sending ack packet, packet number: %d\n", p.packet_num);
+        m.lock();
         pi->status = ACKED;
+        m.unlock();
       }
     }
-    m.unlock();
+    
   }
+  m.lock();
+  std::list<packet>::iterator pi = pack_list.begin();
+  bool isEmpty = pack_list.empty();
+  m.unlock();
+  if(!isEmpty)
+  {
+    for(pi; pi !=  pack_list.end(); ++pi)
+    {
+      if (pi->status != ACKED)
+      {
+        packet p(ACK, pi->packet_num, "\0");
+        send_packet(p, sockid, s_addr);
+        printf("Sending ack packet, packet number: %d\n", p.packet_num);
+        m.lock();
+        pi->status = ACKED;
+        m.unlock();
+      }
+    }
+  } 
 }
 
 
