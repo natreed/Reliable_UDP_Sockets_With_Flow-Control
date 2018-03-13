@@ -34,14 +34,14 @@ int hs_server (struct sockaddr_in  client_addr, int sockid)
 }
 
 //function to run in thread from main for waking up every n milliseconds and resending packets that time expired.
-void resend_timer(std::mutex &m, ctrl_win & cw, bool &exit_flag)
+void resend_timer(std::mutex &m, ctrl_win & cw, bool &exit_flag, int sockid, sockaddr_in client_addr)
 {
   while(exit_flag)
   {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    printf("Running timer. Checking for expired packets. . .\n"); 
     m.lock();
-    cw.check_time_resend();
+    cw.check_time_resend(sockid, client_addr);
     m.unlock();
     
   }

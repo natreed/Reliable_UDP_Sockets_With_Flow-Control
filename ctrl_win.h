@@ -19,7 +19,7 @@ class ctrl_win
     void init(std::mutex * m, int win_sz, int sockid, struct sockaddr_in client_addr);
     void append_cnode(ctrl_node cn);
     void log_ack(int);
-    void check_time_resend();
+    void check_time_resend(int sockid, struct sockaddr_in client_addr);
     void pop_cnode();
     //function to shift window when ack is recieved
     //for first element
@@ -43,7 +43,7 @@ void ctrl_win::pop_cnode()
   cl.pop_front();
 }
 
-void ctrl_win::check_time_resend()
+void ctrl_win::check_time_resend(int sockid, struct sockaddr_in client_addr)
 {
   //return if no nodes in list
   if(cl.empty())
@@ -56,13 +56,14 @@ void ctrl_win::check_time_resend()
   for(int i = 0; i < cl.size(); i++)
   {
     //if the duration of the current time and the time that the node was send is greater than 200 milliseconds, resend
-    if(std::chrono::duration_cast<std::chrono::milliseconds>(cl_iterator->time_started - current_time).count() > 200)
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - cl_iterator->time_started).count() > 200)
     {
-      //TODO send out expired packet and reset time
-      printf("resending expired packet\n");
+      //send out expired packet and reset time
+      send_packet(cl_iterator->get_packet(), sockid, client_addr);
+      cl_iterator->time_started = std::chrono::high_resolution_clock::now();
+      printf("Resending expired packet, Packet number: %d\n", cl_iterator->get_pack_num());
     }
     cl_iterator++;
-
   }
 }
 

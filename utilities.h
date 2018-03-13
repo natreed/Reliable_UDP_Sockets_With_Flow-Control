@@ -91,7 +91,7 @@ class ctrl_node
   int get_status() {return status;}
   void set_status(int s) {status = s;}
   int get_pack_num() {return p.packet_num;}
-  
+  packet get_packet() {return p;} 
   std::chrono::high_resolution_clock::time_point time_started;
   private:
     
