@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
   
   //start receiving thread
   std::thread rcv_thread(rcv_acks, std::ref(list_lock), std::ref(cw), rcv_sockid, rcv_addr, last_packet_num);
-  std::thread timer_thread(resend_timer, std::ref(list_lock), std::ref(cw), std::ref(exit_timer_thread));
+  std::thread timer_thread(resend_timer, std::ref(list_lock), std::ref(cw), std::ref(exit_timer_thread), sockid, client_addr);
   if (!cw.win_mgr(&list_lock, sockid, client_addr))
   {
     close(sockid);
