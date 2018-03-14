@@ -70,8 +70,9 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
     deserialize(&p, buffer);
 
     //TODO: REAL PATCHY DOESNT FIX RCV MSG FAILURE
+
     while(!m.try_lock()) {};
-    if (buffer[0] == '\0' || p.packet_num > max_packet_num)
+    if (buffer[0] == '\0' || p.packet_num > max_packet_num || (!packetlist.empty() && p.packet_num <= packetlist.front().packet_num))
     {
       m.unlock();
       continue;
@@ -108,14 +109,14 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
     try
     {
       while(!m.try_lock()){};
+      if (pack_list.empty())
+      {
+        m.unlock();
+        continue;
+      }
       std::list<packet>::iterator pi = pack_list.begin();
       for(pi; pi !=  pack_list.end(); ++pi)
       {
-        if (pack_list.empty())
-        {
-          m.unlock();
-          continue;
-        }
         if (pi->status != ACKED)
         {
           packet p(ACK, pi->packet_num, "\0");

@@ -58,7 +58,7 @@ void ctrl_win::check_time_resend(int sockid, struct sockaddr_in client_addr)
   for(int i = 0; i < cl.size(); i++)
   {
     //if the duration of the current time and the time that the node was send is greater than 200 milliseconds, resend
-    if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - cl_iterator->time_started).count() > 200)
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - cl_iterator->time_started).count() > 50)
     {
       //send out expired packet and reset time
       send_packet(cl_iterator->get_packet(), sockid, client_addr);
