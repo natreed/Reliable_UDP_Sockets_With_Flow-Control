@@ -37,10 +37,10 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
         }
         else if(p.msg_type == 'C')
         {
-           /*m.lock();
+           m.lock();
            packet_list.pop_front();
            m.unlock();
-           */
+           
            outfile.write(p.data, p.msg_size);
  
            printf("Writing data, packet number: %d\n", p.packet_num); 
@@ -129,11 +129,15 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
     
   }
   m.lock();
-  std::list<packet>::iterator pi = pack_list.begin();
   bool isEmpty = pack_list.empty();
   m.unlock();
-  if(!isEmpty)
+  while(!isEmpty)
   {
+    m.lock();
+    std::list<packet>::iterator pi = pack_list.begin();
+    isEmpty = pack_list.empty();
+    m.unlock();
+
     for(pi; pi !=  pack_list.end(); ++pi)
     {
       if (pi->status != ACKED)
@@ -146,9 +150,9 @@ void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockad
         m.unlock();
       }
     }
-  } 
-}
 
+  }
+}
 
 int client_handshake (struct sockaddr_in serv_addr, int sockid) 
 {
