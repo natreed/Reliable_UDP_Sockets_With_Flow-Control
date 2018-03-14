@@ -24,6 +24,7 @@
 #include <mutex>
 #include <math.h>
 #include <assert.h>
+#include <iostream>
 
 const int DATA_SZ = 1024;
 const int PACK_SZ = sizeof(char) + sizeof(int)*2 + DATA_SZ;

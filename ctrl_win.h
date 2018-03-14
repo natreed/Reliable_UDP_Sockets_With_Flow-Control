@@ -26,10 +26,12 @@ class ctrl_win
     int win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr);
     void shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, char type, std::list<packet> data);
   private:
-    int pack_num;  
+    int pack_num; 
+    std::mutex pack_num_mutex;
     int w_size;
     std::ifstream fs;
     ctrl_list cl;
+    std::mutex ctrl_list_mutex;
 }; 
 
 void ctrl_win::append_cnode (ctrl_node cn) 
@@ -61,6 +63,10 @@ void ctrl_win::check_time_resend(int sockid, struct sockaddr_in client_addr)
       //send out expired packet and reset time
       send_packet(cl_iterator->get_packet(), sockid, client_addr);
       cl_iterator->time_started = std::chrono::high_resolution_clock::now();
+      //cut window in half
+      pack_num_mutex.lock();
+      pack_num = (cl.back().get_packet().packet_num -cl.front().get_packet().packet_num)/2 + cl.front().get_packet().packet_num;
+      pack_num_mutex.unlock();
       printf("Resending expired packet, Packet number: %d\n", cl_iterator->get_pack_num());
     }
     cl_iterator++;
@@ -82,6 +88,8 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
     
     std::list<packet> p_list;
     char  data[DATA_SZ]; 
+    pack_num_mutex.lock();
+    
     for(int i = 0; i < 2; i++)
     {
       if(!fs.eof())
@@ -101,6 +109,7 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
           break;
         }
       }
+      pack_num_mutex.unlock();
     }
     if (!fs.eof())  //check for end of file
     {
@@ -132,6 +141,7 @@ int ctrl_win::win_mgr(std::mutex * m, int sockid, struct sockaddr_in client_addr
   }   
   return 1;
 }
+
 
 void ctrl_win::shift_win (std::mutex * m, int sockid, sockaddr_in client_addr, 
 char type, std::list<packet> data)

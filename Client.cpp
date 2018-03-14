@@ -18,7 +18,9 @@ int main (int argc, char * argv[])
   std::mutex list_lock;
   bool all_done = false;
 
-  int max_packet = window_size - 1;
+  //The initial max packet is the window size -1. When data is written from the
+  //beginning of the max size is incremented.
+  int max_packet = 8;
   length = sizeof(struct sockaddr_in);
 
   sockid = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -81,12 +83,12 @@ int main (int argc, char * argv[])
 
 	printf("\nBeginning receiving data . . .\n");
   std::thread rcv_and_insert(rcv_insert, std::ref(list_lock), std::ref(ctrl_list), sockid, serv_addr,
-    std::ref(max_packet), window_size, std::ref(all_done));
+    std::ref(max_packet), std::ref(all_done));
 
   std::thread write_data_thread(write_data, std::ref(list_lock), std::ref(ctrl_list), std::ref(max_packet), last_packet_num, 
     std::ref(outfile), std::ref(all_done));
   
-  send_acks(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, window_size, all_done);
+  send_acks(list_lock, ctrl_list, rcv_sockid, rcv_addr, max_packet, all_done);
   printf("\nData transmission complete . . .\n\n");
   rcv_and_insert.join();
   write_data_thread.join();

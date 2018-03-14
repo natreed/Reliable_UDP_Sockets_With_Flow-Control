@@ -8,55 +8,56 @@ void write_data(std::mutex & m, std::list<packet> & packet_list,
   int previous_packet_num = -1;
   while (true) 
   {
-    m.lock();
-    bool isEmpty = packet_list.empty();
-    m.unlock();
-    if (isEmpty)
+    if (packet_list.empty())
     {
       continue;
     }
     else
     {
-      m.lock();
-      packet p = packet_list.front();
-      m.unlock();
-      if ((p.packet_num == previous_packet_num +1 ||
-          p.packet_num == 0) && p.status == ACKED)
-      {
-        
-        if (p.msg_type == 'D')
+      while(!m.try_lock()){};
+      try {
+        //printf("write_data locked: 19\n");
+        packet p = packet_list.front();
+        if ((p.packet_num == previous_packet_num +1 ||
+              p.packet_num == 0) && p.status == ACKED)
         {
-          m.lock();
-          packet_list.pop_front();
-          m.unlock();
-          outfile.write(p.data, p.msg_size);
-		
-          printf("Writing data, packet number: %d\n", p.packet_num);
-          previous_packet_num = p.packet_num;
-          max_packet_num++;
+
+          if (p.msg_type == 'D')
+          {
+            packet_list.pop_front();
+            outfile.write(p.data, p.msg_size);
+
+            printf("Writing data, packet number: %d\n", p.packet_num);
+            previous_packet_num = p.packet_num;
+            max_packet_num++;
+          }
+          else if(p.msg_type == 'C')
+          {
+            packet_list.pop_front();
+
+            outfile.write(p.data, p.msg_size);
+
+            printf("Writing data, packet number: %d\n", p.packet_num); 
+            previous_packet_num = p.packet_num;
+            max_packet_num++;
+            all_done = true;
+            m.unlock();
+            //printf("write_data ulocked: 45\n");
+            return;
+          }
         }
-        else if(p.msg_type == 'C')
-        {
-           m.lock();
-           packet_list.pop_front();
-           m.unlock();
-           
-           outfile.write(p.data, p.msg_size);
- 
-           printf("Writing data, packet number: %d\n", p.packet_num); 
-           previous_packet_num = p.packet_num;
-           max_packet_num++;
-           all_done = true;
-           return;
-        }
+        //printf("write_data ulocked: 50\n");
       }
+      catch (const std::exception& e){std::cout << e.what();}
+      m.unlock();
     }
+    std::this_thread::yield();
   }
 }
 
 //Thread receives and inserts into client packet list. 
 void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, sockaddr_in s_addr,
-    int  & max_packet_num, int window_size, bool & all_done)
+    int  & max_packet_num, bool & all_done)
 {
   while(!all_done)
   {
@@ -64,22 +65,21 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
     set_null(buffer);
     int status;
     status = rcv_msg(buffer, sockid, &s_addr);
-      
+    assert(status >= 0);
+    packet p;
+    deserialize(&p, buffer);
 
     //TODO: REAL PATCHY DOESNT FIX RCV MSG FAILURE
-    if (buffer[0] == '\0')
+    while(!m.try_lock()) {};
+    if (buffer[0] == '\0' || p.packet_num > max_packet_num)
     {
+      m.unlock();
       continue;
     }
 
-    m.lock();
-    int size = packetlist.size(); 
-    m.unlock();
-    if (size <=  window_size)
+    try
     {
-      packet p;
-      deserialize(&p, buffer);
-
+      printf("locked 80");
       printf("received packet, packet number: %d\n", p.packet_num);
       //if packet is outside the window, drop it
       if (p.msg_type != DATA && p.msg_type != CLOSE)
@@ -87,70 +87,47 @@ void rcv_insert (std::mutex & m, std::list<packet> & packetlist, int sockid, soc
         char msg[100]  = "msg_type: is not DATA or CLOSE";
         perror("msg_type: %s not data or close packet.\n");
       }
-      if (p.packet_num > max_packet_num)
-      {
-        continue;
-      }
-      m.lock();
+
       insert_packet(packetlist, p);
-      m.unlock();
       printf("Inserting packet into List, Packet number: %d\n", p.packet_num);
+      //printf("ulocked: 98\n");
+
     }
+    catch (const std::exception& e){std::cout << e.what();}
+    m.unlock();
+    //std::this_thread::yield();
   }
 }
 
 void send_acks(std::mutex & m, std::list<packet> & pack_list, int sockid, sockaddr_in s_addr, 
-    int & max_packet_num, int window_size, bool & all_done) 
+    int & max_packet_num, bool & all_done) 
 {
   while(!all_done)
   {
-    m.lock();
-    std::list<packet>::iterator pi = pack_list.begin();
-    bool isEmpty = pack_list.empty();
-    m.unlock();
-    if (isEmpty)
-    {
-      continue;
-    }
 
-   
-    for(pi; pi !=  pack_list.end(); ++pi)
+    try
     {
-      if (pi->status != ACKED)
+      while(!m.try_lock()){};
+      std::list<packet>::iterator pi = pack_list.begin();
+      for(pi; pi !=  pack_list.end(); ++pi)
       {
-        packet p(ACK, pi->packet_num, "\0");
-        send_packet(p, sockid, s_addr);
-        printf("Sending ack packet, packet number: %d\n", p.packet_num);
-        m.lock();
-        pi->status = ACKED;
-        m.unlock();
+        if (pack_list.empty())
+        {
+          m.unlock();
+          continue;
+        }
+        if (pi->status != ACKED)
+        {
+          packet p(ACK, pi->packet_num, "\0");
+          send_packet(p, sockid, s_addr);
+          printf("Sending ack packet, packet number: %d\n", p.packet_num);
+          pi->status = ACKED;
+        }
       }
+      m.unlock();
     }
-    
-  }
-  m.lock();
-  bool isEmpty = pack_list.empty();
-  m.unlock();
-  while(!isEmpty)
-  {
-    m.lock();
-    std::list<packet>::iterator pi = pack_list.begin();
-    isEmpty = pack_list.empty();
-    m.unlock();
-
-    for(pi; pi !=  pack_list.end(); ++pi)
-    {
-      if (pi->status != ACKED)
-      {
-        packet p(ACK, pi->packet_num, "\0");
-        send_packet(p, sockid, s_addr);
-        printf("Sending ack packet, packet number: %d\n", p.packet_num);
-        m.lock();
-        pi->status = ACKED;
-        m.unlock();
-      }
-    }
-
+    catch (const std::exception& e){std::cout << e.what();}
+    //std::this_thread::yield();
   }
 }
 
