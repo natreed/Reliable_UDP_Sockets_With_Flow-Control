@@ -69,23 +69,3 @@ void  rcv_acks(std::mutex & m, ctrl_win & cw, int sockid, sockaddr_in s_addr, in
     m.unlock();
   }
 }
-
-/*
-int new_socket_connection (struct sockaddr_in  client_addr, int sockid)
-{
-  int status = 0;
-  //Signal client that that we are waithing on another socket
-  try
-  {
-    rcv_msg(buffer, sockid, &client_addr);
-  }
-  catch(const std::exception & e){}
-  packet p(WAITING, 0, "\0");
-  status = send_packet(p,  sockid, client_addr);
-  check_retval(status, "Failed in new_socket_connection: rcv_msg");
-  
-
-}
-*/
-
-
