@@ -1,4 +1,4 @@
-# AugmentedUDP
+# AugmentedUDP - Project for Internetworking Protocols
 Add features to UDP socket (reliable data transfer)
 
 ## Requirements (C++11)
